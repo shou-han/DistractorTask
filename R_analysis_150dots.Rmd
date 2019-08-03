@@ -1,0 +1,464 @@
+---
+title: "Dot Stats 150"
+author: "Shou-Han Zhou"
+date: "4 August 2019"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Make sure to keep the default for normal processing.
+#default_output_hook <- knitr::knit_hooks$get("output")
+# 
+# # Output hooks handle normal R console output.
+# knitr::knit_hooks$set( output = function(x, options) {
+# 
+#   comment <- knitr::opts_current$get("comment")
+#   if( is.na(comment) ) comment <- ""
+#   can_null <- grepl( paste0( comment, "\\s*\\[\\d?\\]" ),
+#                      x, perl = TRUE)
+#   do_null <- isTRUE( knitr::opts_current$get("null_prefix") )
+#   if( can_null && do_null ) {
+#     # By default R print output aligns at the right brace.
+#     align_index <- regexpr( "\\]", x )[1] - 1
+#     # Two cases: start or newline
+#     re <- paste0( "^.{", align_index, "}\\]")
+#     rep <- comment
+#     x <- gsub( re, rep,  x )
+#     re <- paste0( "\\\n.{", align_index, "}\\]")
+#     rep <- paste0( "\n", comment )
+#     x <- gsub( re, rep,  x )
+#   }
+# 
+#   default_output_hook( x, options )
+# 
+# })
+# 
+# knitr::opts_template$set("kill_prefix"=list(comment=NA, null_prefix=TRUE))
+```
+
+```{r libraries, echo=FALSE,include=FALSE}
+if(!require(psych)){install.packages("psych")}
+if(!require(nlme)){install.packages("nlme")}
+if(!require(car)){install.packages("car")}
+if(!require(multcompView)){install.packages("multcompView")}
+if(!require(lsmeans)){install.packages("lsmeans")}
+if(!require(ggplot2)){install.packages("ggplot2")}
+if(!require(rcompanion)){install.packages("rcompanion")}
+if(!require(nlme)){install.packages("nlme")}
+if(!require(lmerTest)){install.packages("lmerTest")}
+if(!require(mediation)){install.packages("mediation")}
+if(!require(R.matlab)){install.packages("R.matlab")}
+if(!require(TukeyC)){install.packages("TukeyC")}
+### Install/load required packages
+#List of R packages required for this analysis:
+required_packages <- c("psych", "ggplot2", "tidyr", "stringr", "lubridate", "readxl","knitr",
+                       "readr", "rmarkdown", "png", "lme4", "ez", "dplyr")
+#Install required_packages:
+new.packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+#Load required_packages:
+lapply(required_packages, require, character.only = TRUE)
+
+
+#Set decimal points and disable scientific notation
+options(digits=3, scipen=999) 
+
+genData<-function(dataRaw){
+  indx = which(!is.na(dataRaw[1,]))
+  a<-dataRaw[1,!is.na(dataRaw[1,])]
+  #omit the first row
+  dataRaw = dataRaw[-1,]
+ dataRaw[,ncol(dataRaw)]<-NULL
+  dataProc=matrix(nrow=dim(dataRaw)[1],ncol=dim(dataRaw)[2])
+  for (l in 1:ncol(a)){
+    dataProc[,l]<-as.numeric(dataRaw[,l])
+  }
+ dataAll=data.frame((dataProc),stringsAsFactors=FALSE);
+#  dataAll=dataRaw
+#   b<-t(rep(a,each=4))
+#  names(dataAll)<-b
+#  names(dataAll)<-make.unique(names(dataAll))
+  names(dataAll)<-a
+  return(dataAll)
+}
+
+nopermANOVA<-function(dataInterest,interestValue){
+    # the rest
+  distdata<- dataInterest %>% group_by(ID,distractor)%>%
+      select(ID, distractor, interestValue) %>%
+      na.omit() %>%
+      gather(key_all, dv, -ID,  -distractor)
+  distMean<- tapply(distdata$dv, distdata$distractor,mean)
+  # the binsdata
+  bindata<- dataInterest %>% group_by(ID,distractor)%>%
+      select(ID, distractor, interestValue) %>%
+      na.omit() %>%
+      gather(key_all, dv, -ID, -distractor)
+
+  #datapleveldist,dataplevelbin,dataplevelrest,
+  # the rest
+  # resdata<- dataInterest %>% group_by(ID,distractor,bins,hand,Hemi)%>%
+  #    select(ID, distractor, interestValue, hand,Hemi, bins) %>%
+  #     na.omit() %>%
+  #     gather(key_all, dv, -ID, -Hemi, -distractor, -bins,-hand)
+  distractData <- ezANOVA(data = distdata
+                          , dv = .(dv)
+                          , wid = .(ID)
+                          , within = .(distractor)
+                          , within_full = .(distractor)
+                          , within_covariates = NULL
+                          , between = NULL
+                          , between_covariates = NULL
+                          , observed = NULL
+                          , type = 3)
+  # allstatData  <- ezANOVA(data = resdata
+  #                         , dv = .(dv)
+  #                         , wid = .(ID)
+  #                         , within = .(Hemi,distractor,bins,hand)
+  #                         , within_covariates = NULL
+  #                         , between = NULL
+  #                         , between_covariates = NULL
+  #                         , observed = NULL
+  #                         , type = 3)
+#  binMean <- tapply(distdata$dv, list(bindata$distractor, bindata$bins),mean)
+#  binData<- ezANOVA(data = bindata
+#                          , dv = .(dv)
+#                          , wid = .(ID)
+#                          , within = .(distractor,bins)
+#                          , within_full = .(distractor,bins)
+#                          , within_covariates = NULL
+#                          , between = NULL
+#                          , between_covariates = NULL
+#                          , observed = NULL
+#                          , type = 3)
+  return(list(distMean,distractData))#,allstatData))
+}
+
+permANOVA<-function(dataInterest,interestValue,permNo){
+        # the rest
+    distdata<- dataInterest %>% group_by(ID,distractor)%>%
+        select(ID, distractor, interestValue) %>%
+        na.omit() %>%
+        gather(key_all, dv, -ID,  -distractor)
+    # the binsdata
+    bindata<- dataInterest %>% group_by(ID,distractor)%>%
+        select(ID, distractor, interestValue) %>%
+        na.omit() %>%
+        gather(key_all, dv, -ID, -distractor)
+    #datapleveldist,dataplevelbin,dataplevelrest,
+    # the rest
+    # resdata<- dataInterest %>% group_by(ID,distractor,bins,hand,Hemi)%>%
+    #     select(ID, distractor, interestValue, hand,Hemi, bins) %>%
+    #     na.omit() %>%
+    #     gather(key_all, dv, -ID, -Hemi, -distractor, -bins,-hand)
+    #  log <- capture.output({distractData <- ezPerm(data = distdata
+    #                         , dv = .(dv)
+    #                         , wid = .(ID)
+    #                         , within = .(distractor)
+    #                         , perms = permNo)});
+    #  print('distractDone')
+    #  log<- capture.output({  binData <- ezPerm(data = bindata
+    #                           , dv = .(dv)
+    #                           , wid = .(ID)
+    #                           , within = .(distractor,bins)
+    #                           , perms = permNo)});
+    # print('binDone')
+    #  log <- capture.output({  allstatData <- ezPerm(data = resdata
+    #                           , dv = .(dv)
+    #                           , wid = .(ID)
+    #                           , within = .(Hemi,distractor,bins, hand)
+    #                           , perms = permNo)});
+    # print('alldone')
+    return()#list(distractData,binData))#,allstatData))
+}
+
+nopermANOVAO<-function(dataInterest,interestValue){
+    # the rest
+  distdata<- dataInterest %>% group_by(ID,distractor)%>%
+      select(ID, distractor, interestValue) %>%
+      na.omit() %>%
+      gather(key_all, dv, -ID,  -distractor)
+  # the binsdata
+  bindata<- dataInterest %>% group_by(ID,distractor)%>%
+      select(ID, distractor, interestValue) %>%
+      na.omit() %>%
+      gather(key_all, dv, -ID, -distractor)
+  distractData <- ezANOVA(data = distdata
+                          , dv = .(dv)
+                          , wid = .(ID)
+                          , within = .(distractor)
+                          , within_covariates = NULL
+                          , between = NULL
+                          , between_covariates = NULL
+                          , observed = NULL
+                          , type = 3)
+  binData<- ezANOVA(data = bindata
+                          , dv = .(dv)
+                          , wid = .(ID)
+                          , within = .(distractor)
+                          , within_covariates = NULL
+                          , between = NULL
+                          , between_covariates = NULL
+                          , observed = NULL
+                          , type = 3)
+  return(list(distractData,binData))
+}
+
+
+# a function for calculating standard error 
+se=function(x) sqrt(var(x, na.rm=TRUE)/length(x[!is.na(x)])) 
+```
+
+```{r inputdata, echo=FALSE,include=FALSE}
+sink('analysis_output.txt')
+sink()
+setwd("/home/szhou/yn70_scratch/ShouHan/Distractors/mainProgs_final/R_stats")
+paths = "/home/szhou/yn70_scratch/ShouHan/Distractors/mainProgs_final/R_stats"
+source( "indirectMLM.R" )
+library( boot )
+dataRawA <-read.csv("Stats/mediateCSDAcc.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRaw <- read.csv("Stats/mediateCSD.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRawO <-read.csv("Stats/mediateCSDO.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRawG<-read.csv("Stats/mediateGs.csv", header=FALSE, stringsAsFactors = FALSE)
+dataA<-genData(dataRawA);
+dataERP<-genData(dataRaw)
+dataERPO<-genData(dataRawO)
+dataERPG<-genData(dataRawG)
+
+#library(plyr)
+dataF<-dataERP %>%rename(distractor=c)
+
+# screen for outliers
+#dataF<-filter(dataF, RT<1500, RT>150)
+
+dataF$log_RT<-log(dataF$RT) #log
+#####Z-score each participant's log_RT data ####
+dataF$IDbyITIbyHemifieldbycond<-interaction(dataF$subjectAll, dataF$iti, dataF$side)
+#calculate mean and sd 
+m <- tapply(dataF$log_RT,dataF$IDbyITIbyHemifieldbycond,mean, na.rm = T)
+s <- tapply(dataF$log_RT,dataF$IDbyITIbyHemifieldbycond,sd, na.rm = T)
+#calculate log_RT.Z and save it inside data.frame  
+dataF$log_RT.Z <- (dataF$log_RT-m[dataF$IDbyITIbyHemifieldbycond])/s[dataF$IDbyITIbyHemifieldbycond]
+
+m <- tapply(dataF$N2cpeak,dataF$IDbyITIbyHemifieldbycond,mean, na.rm = T)
+s <- tapply(dataF$N2cpeak,dataF$IDbyITIbyHemifieldbycond,sd, na.rm = T)
+dataF$N2cpeakZ <- (dataF$N2cpeak-m[dataF$IDbyITIbyHemifieldbycond])/s[dataF$IDbyITIbyHemifieldbycond]
+
+m <- tapply(dataF$N2ipeak,dataF$IDbyITIbyHemifieldbycond,mean, na.rm = T)
+s <- tapply(dataF$N2ipeak,dataF$IDbyITIbyHemifieldbycond,sd, na.rm = T)
+dataF$N2ipeakZ <- (dataF$N2ipeak-m[dataF$IDbyITIbyHemifieldbycond])/s[dataF$IDbyITIbyHemifieldbycond]
+
+
+#Remove trials where absolute log_RT.Z>3 (i.e. remove outlier RTs)
+dataF<-dataF[!abs(dataF$log_RT.Z)>3,]
+
+dataF<-dataF %>% #make factors
+  mutate(side= ifelse(side==1,"Left","Right"),
+         hand = ifelse(hand==1,"left","right"),
+         hit = ifelse(is.na(hit),"miss", ifelse(hit==1,"hit","wrongbutton")))%>%
+  rename(., ID=subjectAll, Accuracy = hit, Hemi=side) %>%
+  mutate_each_(funs(factor),c("distractor","Hemi","iti","ID","hand","bins")) #make factor
+levels(dataF$distractor)<-list("nodist"="1","dist"="2")
+
+#summarise statistics
+plevelAll <- dataF %>% group_by(ID,distractor) %>%
+                    summarise(meanRT  = mean(RT, na.rm=TRUE),
+                              meanN2pcpeak = mean(N2pcpeak,na.rm=TRUE),
+                              meanN2cpeak = mean(N2cpeak,na.rm=TRUE),
+                              meanN2ipeak = mean(N2ipeak,na.rm=TRUE),
+                              meanN2cLatency = mean(N2cLatency,na.rm=TRUE),
+                              meanN2iLatency = mean(N2iLatency,na.rm=TRUE),
+                              meanN2pcLatency = mean(N2pcLatency,na.rm=TRUE),                                   
+                              meanCPPrslope = mean(CPPrslope,na.rm=TRUE),
+                              meanCPPslope = mean(CPPslope,na.rm=TRUE),
+                              meanCPPlevel = mean(CPPlevel,na.rm=TRUE),
+                              meanCPPonset = mean(CPPonset,na.rm=TRUE),
+                              meanBetarSlope = mean(BetarSlope,na.rm=TRUE),
+                              meanBetaLevel = mean(BetaLevel,na.rm=TRUE),
+                              meanAlphaPower = mean(AlphaPower,na.rm=TRUE)
+                              )
+
+plevelALLCHH <- plevelAll %>% 
+                group_by(distractor)%>%
+                select("ID","distractor",contains("mean"))
+# test for normality
+options(scipen=99)
+Normality_tests <-plevelALLCHH %>%ungroup()%>%
+  select("ID","distractor",contains("mean"))%>%
+                    gather(key, value,-ID,-distractor) %>%
+                    group_by(key)%>%
+ do(ShapiroWilk_p_value= shapiro.test(.$value)[2],
+                       Anderson_Darling_p_value = nortest::ad.test(.$value)[2], 
+                       CramerVonMises_p_value = nortest::cvm.test(.$value)[2],
+                       Shapiro_Francia_p_value = nortest::sf.test(.$value)[2],
+                       Kolmogorov_Smirnov_p_value= nortest::lillie.test(.$value)[2]) %>% 
+                    mutate(ShapiroWilk_p_value= unlist(ShapiroWilk_p_value),
+                       Anderson_Darling_p_value = unlist(Anderson_Darling_p_value), 
+                       CramerVonMises_p_value = unlist(CramerVonMises_p_value),
+                       Shapiro_Francia_p_value = unlist(Shapiro_Francia_p_value),
+                       Kolmogorov_Smirnov_p_value = unlist(Kolmogorov_Smirnov_p_value)) %>% 
+                    mutate(average_p_value=(ShapiroWilk_p_value + 
+                                                Anderson_Darling_p_value + 
+                                                CramerVonMises_p_value + 
+                                                Shapiro_Francia_p_value + 
+                                                Kolmogorov_Smirnov_p_value)/5) %>% arrange(average_p_value)
+kable(Normality_tests,
+    format.args = list(big.mark = ","), digits=4,
+  
+      caption="Normality tests")
+```
+## Behaviour: Response Time
+```{r RT stats, echo=FALSE, warning=FALSE, comment=''}
+data<-dataA %>% #make factors
+  mutate(side= ifelse(side==1,"Left","Right"),
+         hand = ifelse(hand==1,"left","right"),
+         hit = ifelse(is.na(hit),"miss", ifelse(hit==1,"hit","wrongbutton")))%>% #rename
+  rename(., ID=subjectAll, Accuracy = hit, Hemi=side) %>%
+  mutate_each_(funs(factor),c("c","Hemi","iti","ID","hand")) #make factor
+data$RT=data$RT*2
+data<-filter(data, RT<1500, RT>150)
+
+data$log_RT<-(data$RT) #log
+#####Z-score each participant's log_RT data ####
+data$IDbyITIbyHemifield<-interaction(data$ID, data$iti, data$hand)
+#calculate mean and sd 
+m <- tapply(data$log_RT,data$IDbyITIbyHemifield,mean, na.rm = T)
+s <- tapply(data$log_RT,data$IDbyITIbyHemifield,sd, na.rm = T)
+#calculate log_RT.Z and save it inside data.frame
+data$log_RT.Z <- as.numeric((data$log_RT-m[data$IDbyITIbyHemifield])/s[data$IDbyITIbyHemifield])
+#Remove trials where absolute log_RT.Z>3 (i.e. remove outlier RTs)
+data<-data[!abs(data$log_RT.Z)>3,]
+#######################RT##################################
+Speed_checker <- data %>% group_by(ID,c,Hemi,hand) %>%
+                    summarise(meanRTZ  = mean(RT , na.rm=TRUE))
+
+anovaRT <- ezANOVA(data = Speed_checker
+                        , dv = .(meanRTZ)
+                        , wid = .(ID)
+                        , within = .(c,Hemi)
+                        , within_covariates = NULL
+                        , between = NULL
+                        , between_covariates = NULL
+                        , observed = NULL
+                        , type = 3)
+print("Repeated Measures ANOVA  for the effect of distractor on RT:")
+print(anovaRT);
+
+```
+## N2
+```{r test for N2s, echo=FALSE, warning=FALSE, comment='', null_prefix=TRUE}
+
+N2pcPeakNoperm<- nopermANOVA(plevelAll,'meanN2pcpeak')
+print("Repeated Measures ANOVA  for the effect of distractor on N2pc Peak:")
+print(N2pcPeakNoperm)
+
+N2pcLatencyNoperm<- nopermANOVA(plevelAll,'meanN2pcLatency')
+print("Repeated Measures ANOVA  for the effect of distractor on N2pc Latency:")
+print(N2pcLatencyNoperm)
+
+N2cNoperm<- nopermANOVA(plevelAll,'meanN2cpeak')
+print("Repeated Measures ANOVA  for the effect of distractor on N2c Peak:")
+print(N2cNoperm)
+
+N2cLatencyNoperm<- nopermANOVA(plevelAll,'meanN2cLatency')
+print("Repeated Measures ANOVA  for the effect of distractor on N2c Latency:")
+print(N2cLatencyNoperm)
+
+N2iNoperm<- nopermANOVA(plevelAll,'meanN2ipeak')
+print("Repeated Measures ANOVA  for the effect of distractor on N2i Peak:")
+print(N2iNoperm)
+
+N2iLatencyNoperm<- nopermANOVA(plevelAll,'meanN2iLatency')
+print("Repeated Measures ANOVA  for the effect of distractor on N2i Latency:")
+print(N2iLatencyNoperm)
+```
+## CPP
+```{r test for CPPr slope, echo=FALSE, warning=FALSE, comment=''}
+CPPrslopeNoperm<- nopermANOVA(plevelAll,'meanCPPrslope')
+
+print("Factorial Permutation test for the effect of distractor on mean resp CPP slope:")
+print(CPPrslopeNoperm)
+```
+```{r test for CPP onset, echo=FALSE, warning=FALSE, comment=''}
+temp1<-plevelAll[!(plevelAll$ID==8),]
+temp1<-temp1[!(temp1$ID==17),]
+CPPOnsetNoperm<- nopermANOVA(temp1,'meanCPPonset')
+print("Factorial Permutation test for the effect of distractor on mean CPP onset:")
+print(CPPOnsetNoperm)
+```
+```{r test for CPP level, echo=FALSE, warning=FALSE, comment=''}
+CPPLevelNoperm<- nopermANOVA(plevelAll,'meanCPPlevel')
+print("Factorial Permutation test for the effect of distractor on mean CPP amplitude:")
+print(CPPLevelNoperm)
+```
+# Beta 
+```{r test for betaslopes, echo=FALSE, warning=FALSE, comment=''}
+ BetarslopeNoPerm<- nopermANOVA(plevelAll,'meanBetarSlope')
+print("Factorial Permutation test for the effect of distractor on mean contra Beta slope:")
+print(BetarslopeNoPerm)
+```
+
+```{r test for beta amplitude, echo=FALSE, warning=FALSE, comment=''}
+ BetaLevelNoPerm<- nopermANOVA(plevelAll,'meanBetaLevel')
+print("Factorial Permutation test for the effect of distractor on mean contra Beta amplitude:")
+print(BetaLevelNoPerm)
+```
+# Alpha Power
+```{r test for pre-alpha power, echo=FALSE, warning=FALSE, comment=''}
+ BetaLevelNoPerm<- nopermANOVA(plevelAll,'meanAlphaPower')
+print("Factorial Permutation test for the effect of distractor on mean Pre-Target Alpha Power:")
+print(BetaLevelNoPerm)
+```
+# Mediations
+## CPP slope
+```{r CPPr slope, echo=FALSE, warning=FALSE, comment=''}
+if(!require(lavaan)){install.packages("lavaan")}
+library("lavaan")
+mediationModel<-'
+RT ~ b*CPPrslope + cp*c 
+CPPrslope ~ a*c 
+ab:=a*b
+total := a*b +cp
+'
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
+summary(mediation.res)
+```
+## N2i peak amplitude
+```{r N2ipeak , echo=FALSE, warning=FALSE, comment=''}
+mediationModel<-'
+RT ~ b*N2ipeak + cp*c 
+N2ipeak ~ a*c
+mediation:=a*b
+total := a*b +cp
+'
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
+summary(mediation.res)
+```
+
+## N2c peak amplitude
+```{r N2cpeak , echo=FALSE, warning=FALSE, comment=''}
+mediationModel<-'
+RT ~ b*N2cpeak + cp*c 
+N2cpeak ~ a*c
+mediation:=a*b
+total := a*b +cp
+'
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
+summary(mediation.res)
+```
+
+## N2i peak amplitude and CPP slope
+```{r CPPrslope and N2ipeak, echo=FALSE, warning=FALSE, comment=''}
+# follow Taylor et al 2008
+mediationModel<-'
+RT ~ p33*CPPrslope + p32*N2ipeak + p31*c 
+CPPrslope ~ p22*N2ipeak + p21*c 
+N2ipeak~p11*c
+mediation:=p11*p22*p33
+direct := p31
+total := p11*p22*p33+p11*p32+p21*p33+p31
+'
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
+summary(mediation.res)
+```
+
