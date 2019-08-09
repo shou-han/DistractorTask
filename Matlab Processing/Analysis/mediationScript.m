@@ -1,4 +1,3 @@
-% single-trial mediation
 clear all
 close all
 clc

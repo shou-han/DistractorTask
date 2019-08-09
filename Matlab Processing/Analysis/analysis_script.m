@@ -1,5 +1,4 @@
 % save all the plots in a group and the plot can choose whichever one it wants
-% participant 9, choose a different set of electrodes
 function analysis_script(single_participants)
 %single_participants=3;
 disp('start')
@@ -1010,6 +1009,3 @@ else
         'beta_contra','betar_contra','beta_ipsi','betar_ipsi','RT_side','beta_hemi_diff','betar_hemi_diff',...
         'mediationBeta','mediationsSB','betaslope','mediationsGB','alpha_side','alpha_asym_side','alpha_t','alpha_tr');
 end
-
-
-%Plot_original
