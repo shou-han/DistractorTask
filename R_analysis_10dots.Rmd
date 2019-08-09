@@ -365,7 +365,7 @@ print("Factorial Permutation test for the effect of distractor on mean resp CPP 
 print(CPPrslopeNoperm)
 ```
 ```{r test for CPP onset, echo=FALSE, warning=FALSE, comment=''}
-temp1<-plevelAll[!(plevelAll$ID==5),]
+temp1<-plevelAll[!(plevelAll$ID==5 | plevelAll$ID==3),]
 CPPOnsetNoperm<- nopermANOVA(temp1,'meanCPPonset')
 print("Factorial Permutation test for the effect of distractor on mean CPP onset:")
 print(CPPOnsetNoperm)
@@ -422,20 +422,6 @@ mediationModel<-'
 RT ~ b*N2ipeak + cp*c 
 N2ipeak ~ a*c
 mediation:=a*b
-total := a*b +cp
-'
-mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
-summary(mediation.res)
-```
-## Distractor -> CPPonset -> RT
-```{r CPPonset, echo=FALSE, warning=FALSE, comment=''}
-if(!require(lavaan)){install.packages("lavaan")}
-library("lavaan")
-mediationModel<-'
-RT ~ b*CPPonset + cp*c 
-CPPonset ~ a*c 
-mediation:=a*b
-direct:=cp
 total := a*b +cp
 '
 mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
