@@ -1,5 +1,5 @@
 ---
-title: "Dot Stats 10"
+title: "Dot Stats 150"
 author: "Shou-Han Zhou"
 date: "7 August 2019"
 output: html_document
@@ -216,9 +216,9 @@ setwd("/home/szhou/yn70_scratch/ShouHan/Distractors/mainProgs_final/R_stats")
 paths = "/home/szhou/yn70_scratch/ShouHan/Distractors/mainProgs_final/R_stats"
 source( "indirectMLM.R" )
 library( boot )
-dataRawA <-read.csv("Stats/mediateCSDAccold.csv", header=FALSE, stringsAsFactors = FALSE)
-dataRaw <- read.csv("Stats/mediateCSDold.csv", header=FALSE, stringsAsFactors = FALSE)
-dataRawG<-read.csv("Stats/mediateGsold.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRawA <-read.csv("Stats/mediateCSDAcc.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRaw <- read.csv("Stats/mediateCSD.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRawG<-read.csv("Stats/mediateGs.csv", header=FALSE, stringsAsFactors = FALSE)
 dataA<-genData(dataRawA);
 dataERP<-genData(dataRaw)
 dataERPG<-genData(dataRawG)
@@ -226,7 +226,31 @@ dataERPG<-genData(dataRawG)
 #library(plyr)
 dataF<-dataERP %>%rename(distractor=c)
 
-dataF<-dataF %>% #make factors
+# screen for outliers
+#dataF<-filter(dataF, RT<1500, RT>150)
+
+dataF$log_RT<-log(dataF$RT) #log
+#####Z-score each participant's log_RT data ####
+#dataF$IDbyITIbyHemifieldbycond<-interaction(dataF$subjectAll, dataF$iti, dataF$side)
+#calculate mean and sd 
+#m <- tapply(dataF$log_RT,dataF$IDbyITIbyHemifieldbycond,mean, na.rm = T)
+#s <- tapply(dataF$log_RT,dataF$IDbyITIbyHemifieldbycond,sd, na.rm = T)
+#calculate log_RT.Z and save it inside data.frame  
+#dataF$log_RT.Z <- (dataF$log_RT-m[dataF$IDbyITIbyHemifieldbycond])/s[dataF$IDbyITIbyHemifieldbycond]
+
+#m <- tapply(dataF$N2cpeak,dataF$IDbyITIbyHemifieldbycond,mean, na.rm = T)
+#s <- tapply(dataF$N2cpeak,dataF$IDbyITIbyHemifieldbycond,sd, na.rm = T)
+#dataF$N2cpeakZ <- (dataF$N2cpeak-m[dataF$IDbyITIbyHemifieldbycond])/s[dataF$IDbyITIbyHemifieldbycond]
+
+#m <- tapply(dataF$N2ipeak,dataF$IDbyITIbyHemifieldbycond,mean, na.rm = T)
+#s <- tapply(dataF$N2ipeak,dataF$IDbyITIbyHemifieldbycond,sd, na.rm = T)
+#dataF$N2ipeakZ <- (dataF$N2ipeak-m[dataF$IDbyITIbyHemifieldbycond])/s[dataF$IDbyITIbyHemifieldbycond]
+
+
+#Remove trials where absolute log_RT.Z>3 (i.e. remove outlier RTs)
+#dataF<-dataF[!abs(dataF$log_RT.Z)>3,]
+
+dataF<-dataF %>% #make factor
   rename(., ID=subjectAll) %>%
   mutate_each_(funs(factor),c("distractor","ID","bins")) #make factor
 levels(dataF$distractor)<-list("nodist"="1","dist"="2")
@@ -241,12 +265,11 @@ plevelAll <- dataF %>% group_by(ID,distractor) %>%
                               meanN2iLatency = mean(N2iLatency,na.rm=TRUE),
                               meanN2pcLatency = mean(N2pcLatency,na.rm=TRUE),                                   
                               meanCPPrslope = mean(CPPrslope,na.rm=TRUE),
-                              meanCPPrslope = mean(CPPrslope,na.rm=TRUE),
                               meanCPPlevel = mean(CPPlevel,na.rm=TRUE),
                               meanCPPonset = mean(CPPonset,na.rm=TRUE),
                               meanBetarSlope = mean(BetarSlope,na.rm=TRUE),
                               meanBetaLevel = mean(BetaLevel,na.rm=TRUE),
-                              meanAlphapower = mean(Alphapower,na.rm=TRUE)
+                              meanAlphaPower = mean(Alphapower,na.rm=TRUE)
                               )
 
 plevelALLCHH <- plevelAll %>% 
@@ -280,7 +303,7 @@ kable(Normality_tests,
 ```
 ## Behaviour: Response Time
 ```{r Response Time Graph, out.width='50%', fig.show='hold', echo=FALSE}
-knitr::include_graphics((rep('../analysisScript/Figures/RT_bar_graphs10dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/RT_bar_graphs150dots.png')))
 ```
 ```{r RT stats, echo=FALSE, warning=FALSE, comment=''}
 data<-dataA %>% #make factors
@@ -321,10 +344,10 @@ print(anovaRT);
 ```
 ## N2
 ```{r N2pc Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
-knitr::include_graphics((rep('../analysisScript/Figures/N2pcxdist10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/N2cxdist10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/N2ixdist10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/N2c_i10dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/N2pcxdist150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/N2cxdist150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/N2ixdist150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/N2c_i150dots.png')))
 ```
 ```{r test for N2s, echo=FALSE, warning=FALSE, comment='', null_prefix=TRUE}
 
@@ -354,9 +377,9 @@ print(N2iLatencyNoperm)
 ```
 ## CPP
 ```{r CPP  Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
-knitr::include_graphics((rep('../analysisScript/Figures/CPPxdist10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/CPPrxdist10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/CPP10dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/CPPxdist150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/CPPrxdist150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/CPP150dots.png')))
 ```
 ```{r test for CPPr slope, echo=FALSE, warning=FALSE, comment=''}
 CPPrslopeNoperm<- nopermANOVA(plevelAll,'meanCPPrslope')
@@ -365,7 +388,8 @@ print("Factorial Permutation test for the effect of distractor on mean resp CPP 
 print(CPPrslopeNoperm)
 ```
 ```{r test for CPP onset, echo=FALSE, warning=FALSE, comment=''}
-temp1<-plevelAll[!(plevelAll$ID==5),]
+temp1<-plevelAll[!(plevelAll$ID==4),]
+#temp1<-temp1[!(temp1$ID==17),]
 CPPOnsetNoperm<- nopermANOVA(temp1,'meanCPPonset')
 print("Factorial Permutation test for the effect of distractor on mean CPP onset:")
 print(CPPOnsetNoperm)
@@ -377,9 +401,9 @@ print(CPPLevelNoperm)
 ```
 # Beta 
 ```{r Beta Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
-knitr::include_graphics((rep('../analysisScript/Figures/beta_stim10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/beta_resp10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/betaR10dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/beta_stim150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/beta_resp150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/betaR150dots.png')))
 ```
 ```{r test for betaslopes, echo=FALSE, warning=FALSE, comment=''}
  BetarslopeNoPerm<- nopermANOVA(plevelAll,'meanBetarSlope')
@@ -394,13 +418,13 @@ print(BetaLevelNoPerm)
 ```
 # Alpha Power
 ```{r Alpha Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
-knitr::include_graphics((rep('../analysisScript/Figures/alpha_sides10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/alphapre10dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/alpha_sides150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/alphapre150dots.png')))
 ```
 ```{r test for pre-alpha power, echo=FALSE, warning=FALSE, comment=''}
- BetaLevelNoPerm<- nopermANOVA(plevelAll,'meanAlphapower')
+ AlphaLevelNoperm<- nopermANOVA(plevelAll,'meanAlphaPower')
 print("Factorial Permutation test for the effect of distractor on mean Pre-Target Alpha Power:")
-print(BetaLevelNoPerm)
+print(AlphaLevelNoperm)
 ```
 # Mediations
 ##  Distractor -> CPP slope ->RT
@@ -411,17 +435,6 @@ mediationModel<-'
 RT ~ b*CPPrslope + cp*c 
 CPPrslope ~ a*c 
 ab:=a*b
-total := a*b +cp
-'
-mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
-summary(mediation.res)
-```
-##  Distractor -> N2i peak amplitude ->RT
-```{r N2ipeak , echo=FALSE, warning=FALSE, comment=''}
-mediationModel<-'
-RT ~ b*N2ipeak + cp*c 
-N2ipeak ~ a*c
-mediation:=a*b
 total := a*b +cp
 '
 mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
@@ -441,12 +454,27 @@ total := a*b +cp
 mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
 summary(mediation.res)
 ```
+
+##  Distractor -> N2i peak amplitude ->RT
+```{r N2ipeak , echo=FALSE, warning=FALSE, comment=''}
+mediationModel<-'
+RT ~ b*N2ipeak + cp*c 
+N2ipeak ~ a*c
+mediation:=a*b
+direct:=cp
+total := a*b +cp
+'
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
+summary(mediation.res)
+```
+
 ## Distractor -> N2c peak amplitude ->RT
 ```{r N2cpeak , echo=FALSE, warning=FALSE, comment=''}
 mediationModel<-'
 RT ~ b*N2cpeak + cp*c 
 N2cpeak ~ a*c
 mediation:=a*b
+direct:=cp
 total := a*b +cp
 '
 mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
