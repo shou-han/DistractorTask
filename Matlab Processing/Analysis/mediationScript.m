@@ -38,11 +38,11 @@ for onew=2
             subjIndx = sT;
         end
         if CSD
-            load(['Data/ERPs/group_plots_erp_diff_CSD_1binsStats_8Hz_' oldnew{onew} '_' num2str(sT) '_' num2str(chn)],'mediations','mediationsS','mediationsA','mediationsG','chanlocs','t','tr')
-            load(['Data/ERPs/group_plots_erp_diff_CSD_1binsStats_35Hz_' oldnew{onew} '_' num2str(sT) '_' num2str(chn)],'mediations','mediationsSB','mediationsGB','STFT_time','STFT_timer','mediationsSA','mediationBeta') 
+            load(['Data/ERPs/group_plots_erp_diff_CSD_1binsStats_' oldnew{onew} '_' num2str(sT) '_' num2str(chn)],'mediations','mediationsS','mediationsA','chanlocs','t','tr')
+            load(['Data/ERPs/group_plots_erp_diff_CSD_1binsStats_' oldnew{onew} '_' num2str(sT) '_' num2str(chn)],'mediationsSB','mediationsGB','STFT_time','STFT_timer','mediationsSA','mediationBeta','mediationsG') 
         else
-            load(['Data/ERPs/group_plots_erp_diff_1binsStats_' oldnew{onew} '_' num2str(sT) '_' num2str(chn)],'mediatierons','mediationsS','mediationsA','mediationsG','chanlocs','t','tr',...
-                'mediationsSB','mediationsGB','STFT_time','STFT_timer','mediationsSA')
+            load(['Data/ERPs/group_plots_erp_diff_1binsStats_' oldnew{onew} '_' num2str(sT) '_' num2str(chn)],'mediations','mediationsS','mediationsA','chanlocs','t','tr')
+            load(['Data/ERPs/group_plots_erp_diff_1binsStats_' oldnew{onew} '_' num2str(sT) '_' num2str(chn)],'mediationsSB','mediationsGB','STFT_time','STFT_timer','mediationsSA','mediationBeta','mediationsG') 
         end
         clear ms
         %fields = {'ERP','ERPr','ERPdiff','ERPrdiff'};
