@@ -1,0 +1,31 @@
+[fast slowRT] = genBins(allRTs, conds.default,)
+            % bins are associated with the trials
+            %convert allRT to the equivalent indext of t
+            allRT_t = floor((allRT +700)/2+1); %using the lower even for  odd numbers
+            counters = ones(1,no_of_bins);
+            RT_temp = [RTs{s,c,:,:}];
+            %find the CPP at RT
+            ks = allRT_t([conds.default{s,c,:,:}]);
+            CPP_clk_temp = diag(squeeze(erp(:,ks,[conds.default{s,c,:,:}]))); %(s, chan, STFT_timers, targetside)
+            [RT_sorted,indx] = sort(RT_temp);
+            RT_temp = RT_temp(indx); %sorted RTs
+            CPP_clk_temp = CPP_clk_temp(indx)';
+            
+            group_size = floor(length(RT_temp)/no_of_bins); %trials within group
+            %%%%% RT_bins are sorted through time, from largest bin
+            %%%%% time to the smallest
+            for bin = 1:no_of_bins
+                CPP_RT_bins{bin}(counters(bin):counters(bin)+group_size-1) = ...
+                    CPP_clk_temp(end-bin_counter(bin)*group_size+1:end-(bin_counter(bin)-1)*group_size);
+                RT_bins{bin}(counters(bin):counters(bin)+group_size-1) = ...
+                    RT_temp(end-bin_counter(bin)*group_size+1:end-(bin_counter(bin)-1)*group_size);
+                counters(bin)=counters(bin)+group_size;
+            end
+            
+            %
+            for bin = 1:no_of_bins
+                disp(['Subject ',allsubj{s},' Bin ',num2str(bin),' = ',num2str(size([CPP_RT_bins{bin}],2))])
+                CPP_RT_bins_mean(s,c,bin) = squeeze(mean([CPP_RT_bins{bin}]));
+                RT_bins_mean(s,c,bin) = squeeze(mean([RT_bins{bin}]));
+            end            
+        end
