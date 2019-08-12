@@ -1,13 +1,14 @@
 % save all the plots in a group and the plot can choose whichever one it wants
-function analysis_script(single_participants)
+% participant 9, choose a different set of electrodes
+function erp_all_subj_withinCond_compare_allTrials(single_participants)
 %single_participants=3;
 disp('start')
 oldnew = {'', 'old'};
 old=1 ;
 chP=13;
 ch_CPP=13;
-ch_lr = 45; % left is all contra using erpN
-ch_rl = 51; %right is all ipsi using erpN
+ch_lr = 45; %45;%ch_N2c(single_participants);% left is all contra using erpN
+ch_rl = 51; %51;%ch_N2i(single_participants);%right is all ipsi using erpN
 % these two (new ones) didn't have the cap aligned so the CPP was a bit too
 % high
 if ismember(single_participants,[5 14]) && ~old
@@ -28,6 +29,7 @@ else
     load ../beg_vals
 end
 chanlocs = readlocs('actiCAP64_2_ThetaPhi.elp','filetype','besa'); %DN for actiCAP
+%chanlocs = readlocs('cap64.loc');
 TCD_bigdots = {};
 path_temp = '../Data/';
 skip_step = 10;
@@ -165,6 +167,8 @@ for s=1:length(single_participants)
         STFT_time_alpha(cc) = mean(t(tf));
         cc=cc+1;
     end
+    
+    % generating SSVEP (same frequency)
     %% Load the trials
     clear indx1 indx2
     
@@ -365,6 +369,7 @@ for s=1:length(single_participants)
     
     %perform group trials mediation analysis
     j=0;
+    %hemiS = [elec_pairs(:,1); centre_chans'; elec_pairs(:,2)];
     if CSD
         window_searchi = [150,450];
         window_searchc = [150 400];
@@ -427,7 +432,9 @@ for s=1:length(single_participants)
                         allRT>rtlim(1)*fs & allRT<rtlim(2)*fs & BL_resp_artrej==1  & validrlock & ET_BL_resp_artrej ); %
                     
                     %condition for accuracy since need to see it's okay first
-                    condsACC{s,d,iti,side} = find(ismember(allTrig,targcodes(c,iti,side)) & ET_BL_resp_artrej ); %                    
+                    condsACC{s,d,iti,side} = find(ismember(allTrig,targcodes(c,iti,side)) & ET_BL_resp_artrej ); %
+                    %condsACC{s,d,iti,side} = randsample(condsACC{s,d,iti,side},floor(length(condsACC{s,d,iti,side})/2)); % get half the trials within each condition
+                    
                     condsT{s,d,iti,side} = find(ismember(allTrig,targcodes(c,iti,side)) );
                     RTs{s,d,iti,side} = allRT([conds{s,d,iti,side}])*1000/fs;
                 end
@@ -440,6 +447,7 @@ for s=1:length(single_participants)
             for iti=1:size(targcodes,2)
                 RT_temp = [RTs{s,d,iti,side}];
                 cond_temp=[conds{s,d,iti,side}];
+                
                 counters = ones(1,no_of_bins);
                 
                 %bin it
@@ -451,15 +459,18 @@ for s=1:length(single_participants)
                 binch = find(bins_count==min(bins_count),1);
                 for bin =  [1:binch-1]
                     conds_all= conds_bin_temp((bin-1)*group_size+1:bin*group_size);
+                    %for d=1:2; conds_bin{s,d,iti,side,bin} = conds_all(dAdP_all==d);end
                     conds_bin{s,d,iti,side,bin} = conds_all;
                     bins_count(bin) = bins_count(bin)+group_size;
                 end
                 conds_all= conds_bin_temp((binch-1)*group_size+1:(binch)*group_size+rem_size);
+                %for d=1:2;conds_bin{s,d,iti,side,binch} = conds_all(dAdP_all==d);end%account for the remainders
                 conds_bin{s,d,iti,side,binch} = conds_all;
                 bins_count(binch) = bins_count(binch)+group_size+rem_size;
                 
                 for bin = [binch+1:no_of_bins]
                     conds_all= conds_bin_temp((bin-1)*group_size+rem_size+1:bin*group_size+rem_size);
+                    %for d=1:2; conds_bin{s,d,iti,side,bin} = conds_all(dAdP_all==d);end
                     conds_bin{s,d,iti,side,bin} = conds_all;
                     bins_count(bin) = bins_count(bin)+group_size;
                 end
@@ -1009,3 +1020,6 @@ else
         'beta_contra','betar_contra','beta_ipsi','betar_ipsi','RT_side','beta_hemi_diff','betar_hemi_diff',...
         'mediationBeta','mediationsSB','betaslope','mediationsGB','alpha_side','alpha_asym_side','alpha_t','alpha_tr');
 end
+
+
+%Plot_original

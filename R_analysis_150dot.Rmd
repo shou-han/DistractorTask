@@ -1,7 +1,7 @@
 ---
 title: "Dot Stats 150"
 author: "Shou-Han Zhou"
-date: "10 August 2019"
+date: "12 August 2019"
 output: html_document
 ---
 ```{r setup, include=FALSE}
@@ -37,6 +37,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r libraries, echo=FALSE,include=FALSE}
+if(!require(lavaan)){install.packages("lavaan")}
+library("lavaan")
 if(!require(psych)){install.packages("psych")}
 if(!require(nlme)){install.packages("nlme")}
 if(!require(car)){install.packages("car")}
@@ -74,10 +76,6 @@ genData<-function(dataRaw){
     dataProc[,l]<-as.numeric(dataRaw[,l])
   }
  dataAll=data.frame((dataProc),stringsAsFactors=FALSE);
-#  dataAll=dataRaw
-#   b<-t(rep(a,each=4))
-#  names(dataAll)<-b
-#  names(dataAll)<-make.unique(names(dataAll))
   names(dataAll)<-a
   return(dataAll)
 }
@@ -94,13 +92,6 @@ nopermANOVA<-function(dataInterest,interestValue){
       select(ID, distractor, interestValue) %>%
       na.omit() %>%
       gather(key_all, dv, -ID, -distractor)
-
-  #datapleveldist,dataplevelbin,dataplevelrest,
-  # the rest
-  # resdata<- dataInterest %>% group_by(ID,distractor,bins,hand,Hemi)%>%
-  #    select(ID, distractor, interestValue, hand,Hemi, bins) %>%
-  #     na.omit() %>%
-  #     gather(key_all, dv, -ID, -Hemi, -distractor, -bins,-hand)
   distractData <- ezANOVA(data = distdata
                           , dv = .(dv)
                           , wid = .(ID)
@@ -111,26 +102,6 @@ nopermANOVA<-function(dataInterest,interestValue){
                           , between_covariates = NULL
                           , observed = NULL
                           , type = 3)
-  # allstatData  <- ezANOVA(data = resdata
-  #                         , dv = .(dv)
-  #                         , wid = .(ID)
-  #                         , within = .(Hemi,distractor,bins,hand)
-  #                         , within_covariates = NULL
-  #                         , between = NULL
-  #                         , between_covariates = NULL
-  #                         , observed = NULL
-  #                         , type = 3)
-#  binMean <- tapply(distdata$dv, list(bindata$distractor, bindata$bins),mean)
-#  binData<- ezANOVA(data = bindata
-#                          , dv = .(dv)
-#                          , wid = .(ID)
-#                          , within = .(distractor,bins)
-#                          , within_full = .(distractor,bins)
-#                          , within_covariates = NULL
-#                          , between = NULL
-#                          , between_covariates = NULL
-#                          , observed = NULL
-#                          , type = 3)
   return(list(distMean,distractData))#,allstatData))
 }
 
@@ -145,31 +116,7 @@ permANOVA<-function(dataInterest,interestValue,permNo){
         select(ID, distractor, interestValue) %>%
         na.omit() %>%
         gather(key_all, dv, -ID, -distractor)
-    #datapleveldist,dataplevelbin,dataplevelrest,
-    # the rest
-    # resdata<- dataInterest %>% group_by(ID,distractor,bins,hand,Hemi)%>%
-    #     select(ID, distractor, interestValue, hand,Hemi, bins) %>%
-    #     na.omit() %>%
-    #     gather(key_all, dv, -ID, -Hemi, -distractor, -bins,-hand)
-    #  log <- capture.output({distractData <- ezPerm(data = distdata
-    #                         , dv = .(dv)
-    #                         , wid = .(ID)
-    #                         , within = .(distractor)
-    #                         , perms = permNo)});
-    #  print('distractDone')
-    #  log<- capture.output({  binData <- ezPerm(data = bindata
-    #                           , dv = .(dv)
-    #                           , wid = .(ID)
-    #                           , within = .(distractor,bins)
-    #                           , perms = permNo)});
-    # print('binDone')
-    #  log <- capture.output({  allstatData <- ezPerm(data = resdata
-    #                           , dv = .(dv)
-    #                           , wid = .(ID)
-    #                           , within = .(Hemi,distractor,bins, hand)
-    #                           , perms = permNo)});
-    # print('alldone')
-    return()#list(distractData,binData))#,allstatData))
+    return()
 }
 
 nopermANOVAO<-function(dataInterest,interestValue){
@@ -230,25 +177,6 @@ dataF<-dataERP %>%rename(distractor=c)
 #dataF<-filter(dataF, RT<1500, RT>150)
 
 dataF$log_RT<-log(dataF$RT) #log
-#####Z-score each participant's log_RT data ####
-#dataF$IDbyITIbyHemifieldbycond<-interaction(dataF$subjectAll, dataF$iti, dataF$side)
-#calculate mean and sd 
-#m <- tapply(dataF$log_RT,dataF$IDbyITIbyHemifieldbycond,mean, na.rm = T)
-#s <- tapply(dataF$log_RT,dataF$IDbyITIbyHemifieldbycond,sd, na.rm = T)
-#calculate log_RT.Z and save it inside data.frame  
-#dataF$log_RT.Z <- (dataF$log_RT-m[dataF$IDbyITIbyHemifieldbycond])/s[dataF$IDbyITIbyHemifieldbycond]
-
-#m <- tapply(dataF$N2cpeak,dataF$IDbyITIbyHemifieldbycond,mean, na.rm = T)
-#s <- tapply(dataF$N2cpeak,dataF$IDbyITIbyHemifieldbycond,sd, na.rm = T)
-#dataF$N2cpeakZ <- (dataF$N2cpeak-m[dataF$IDbyITIbyHemifieldbycond])/s[dataF$IDbyITIbyHemifieldbycond]
-
-#m <- tapply(dataF$N2ipeak,dataF$IDbyITIbyHemifieldbycond,mean, na.rm = T)
-#s <- tapply(dataF$N2ipeak,dataF$IDbyITIbyHemifieldbycond,sd, na.rm = T)
-#dataF$N2ipeakZ <- (dataF$N2ipeak-m[dataF$IDbyITIbyHemifieldbycond])/s[dataF$IDbyITIbyHemifieldbycond]
-
-
-#Remove trials where absolute log_RT.Z>3 (i.e. remove outlier RTs)
-#dataF<-dataF[!abs(dataF$log_RT.Z)>3,]
 
 dataF<-dataF %>% #make factor
   rename(., ID=subjectAll) %>%
@@ -308,6 +236,7 @@ knitr::include_graphics((rep('../analysisScript/Figures/RT_bar_graphs150dots.png
 ```{r RT stats, echo=FALSE, warning=FALSE, comment=''}
 data<-dataA %>% #make factors
   mutate(side= ifelse(side==1,"Left","Right"),
+         c= ifelse(c==2,"dist","nodist"),
          hand = ifelse(hand==1,"left","right"),
          hit = ifelse(is.na(hit),"miss", ifelse(hit==1,"hit","wrongbutton")))%>% #rename
   rename(., ID=subjectAll, Accuracy = hit, Hemi=side) %>%
@@ -328,7 +257,9 @@ data<-data[!abs(data$log_RT.Z)>3,]
 #######################RT##################################
 Speed_checker <- data %>% group_by(ID,c,Hemi,hand) %>%
                     summarise(meanRTZ  = mean(RT , na.rm=TRUE))
+speedmean<- tapply(Speed_checker$meanRTZ, Speed_checker$c,mean)
 
+print(list(speedmean))
 anovaRT <- ezANOVA(data = Speed_checker
                         , dv = .(meanRTZ)
                         , wid = .(ID)
@@ -384,22 +315,22 @@ knitr::include_graphics((rep('../analysisScript/Figures/CPP150dots.png')))
 ```{r test for CPPr slope, echo=FALSE, warning=FALSE, comment=''}
 CPPrslopeNoperm<- nopermANOVA(plevelAll,'meanCPPrslope')
 
-print("Factorial Permutation test for the effect of distractor on mean resp CPP slope:")
+print("Repeated Measures ANOVA  for the effect of distractor on mean resp CPP slope:")
 print(CPPrslopeNoperm)
 ```
 ```{r test for CPP onset, echo=FALSE, warning=FALSE, comment=''}
 temp1<-plevelAll[!(plevelAll$ID==4),]
 #temp1<-temp1[!(temp1$ID==17),]
 CPPOnsetNoperm<- nopermANOVA(temp1,'meanCPPonset')
-print("Factorial Permutation test for the effect of distractor on mean CPP onset:")
+print("Repeated Measures ANOVA  for the effect of distractor on mean CPP onset:")
 print(CPPOnsetNoperm)
 ```
 ```{r test for CPP level, echo=FALSE, warning=FALSE, comment=''}
 CPPLevelNoperm<- nopermANOVA(plevelAll,'meanCPPlevel')
-print("Factorial Permutation test for the effect of distractor on mean CPP amplitude:")
+print("Repeated Measures ANOVA for the effect of distractor on mean CPP resp amplitude:")
 print(CPPLevelNoperm)
 ```
-# Beta 
+# Beta (11-21Hz)
 ```{r Beta Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
 knitr::include_graphics((rep('../analysisScript/Figures/beta_stim150dots.png')))
 knitr::include_graphics((rep('../analysisScript/Figures/beta_resp150dots.png')))
@@ -407,34 +338,33 @@ knitr::include_graphics((rep('../analysisScript/Figures/betaR150dots.png')))
 ```
 ```{r test for betaslopes, echo=FALSE, warning=FALSE, comment=''}
  BetarslopeNoPerm<- nopermANOVA(plevelAll,'meanBetarSlope')
-print("Factorial Permutation test for the effect of distractor on mean contra Beta slope:")
+print("Repeated Measures ANOVA for the effect of distractor on mean contra Beta slope:")
 print(BetarslopeNoPerm)
 ```
 
 ```{r test for beta amplitude, echo=FALSE, warning=FALSE, comment=''}
  BetaLevelNoPerm<- nopermANOVA(plevelAll,'meanBetaLevel')
-print("Factorial Permutation test for the effect of distractor on mean contra Beta amplitude:")
+print("Repeated Measures ANOVA  for the effect of distractor on mean contra Beta amplitude:")
 print(BetaLevelNoPerm)
 ```
-# Alpha Power
+# Alpha Power (9-11Hz)
 ```{r Alpha Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
 knitr::include_graphics((rep('../analysisScript/Figures/alpha_sides150dots.png')))
 knitr::include_graphics((rep('../analysisScript/Figures/alphapre150dots.png')))
 ```
 ```{r test for pre-alpha power, echo=FALSE, warning=FALSE, comment=''}
  AlphaLevelNoperm<- nopermANOVA(plevelAll,'meanAlphaPower')
-print("Factorial Permutation test for the effect of distractor on mean Pre-Target Alpha Power:")
+print("Repeated Measures ANOVA  for the effect of distractor on mean Pre-Target Alpha Power:")
 print(AlphaLevelNoperm)
 ```
 # Mediations
-##  Distractor -> CPP slope ->RT
+##  Distractor -> resp CPP slope ->RT
 ```{r CPPr slope, echo=FALSE, warning=FALSE, comment=''}
-if(!require(lavaan)){install.packages("lavaan")}
-library("lavaan")
 mediationModel<-'
 RT ~ b*CPPrslope + cp*c 
-CPPrslope ~ a*c 
-ab:=a*b
+CPPrslope ~ a*c
+mediation:=a*b
+direct:=cp
 total := a*b +cp
 '
 mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
@@ -481,7 +411,7 @@ mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
 summary(mediation.res)
 ```
 
-## Distractor -> N2i peak amplitude -> CPP slope ->RT
+## Distractor -> N2i peak amplitude -> resp CPP slope ->RT
 ```{r CPPrslope and N2ipeak, echo=FALSE, warning=FALSE, comment=''}
 # follow Taylor et al 2008
 mediationModel<-'

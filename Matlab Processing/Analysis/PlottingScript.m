@@ -8,12 +8,12 @@ addpath('function_programs/');
 eeglab
 namestring ={'150dots','10dots'};
 addpath('function_programs/');
-onew=2;
+onew=1;
 oldnew={'', 'old'};
 if onew==2
-    ssj = [1:20];
+    ssj =[1:18 20:21];
 else
-    ssj=[1:18 20:21];
+    ssj=[1:20];
 end
 chn = 13;
 CSD = 1;
@@ -131,7 +131,7 @@ ColsRT=[red;blue];1
 RTCols=[dblack];
 alphas =[0.4 1 0.2 0.6];
 alphaRT=[0.4 1];
-
+return
 %% Topology Plots
 %% ERP scalp topo
 if CSD
@@ -279,11 +279,11 @@ for bin=1:1
         hold on
         (c-1)*2+bin
         hss1((bin-1)*2+c) = shadedErrorBar(t,meanN2pc,stdN2pc,'lineprops',{'Color',[dpurple alphaRT((bin-1)*2+c)],'LineWidth',3,'LineStyle','-'});
-        set(gca,'FontSize',16,'xlim',[-100,1400],'xtick',[],'ylim',yN2pc,'ytick',ytickN2pc);%,'ylim',[-1.5,0.5]);
+        set(gca,'FontSize',16,'xlim',[-100,1400],'xtick',[-100,0:200:1200],'ylim',yN2pc,'ytick',ytickN2pc);%,'ylim',[-1.5,0.5]);
         hss4((bin-1)*2+c)=line([mean(mean(RT_group_times(c,:,bin),1),2) mean(mean(RT_group_times(c,:,bin),1),2)],...
             ylim,'Color',[dpurple alphaRT((bin-1)*2+c)],'LineWidth',1.5,'LineStyle','--');
         ylabel('N2pc Amplitude (\muVolts)','FontName','Arial','FontSize',16,'fontweight','bold')
-        %xlabel('Time from evidence (ms)','FontName','Arial','FontSize',16','fontweight','bold')
+        xlabel('Time(ms)','FontName','Arial','FontSize',16','fontweight','bold')
         line([0 0],ylim,'Color','k','LineWidth',3,'LineStyle','-');
         line(xlim,[0 0],'Color','k','LineWidth',1.5,'LineStyle','-');
         %     legend(h,side_tags, ...
@@ -304,13 +304,12 @@ for bin = 1:1
         hold on
         %hss1((bin-1)*2+c) = plot(t,CPP_c,'Color',[Cols(1,:) alphas((bin-1)*2+c)],'LineWidth',3,'LineStyle','-');
         hss3((bin-1)*2+c) = shadedErrorBar(t,meanN2c,stdN2c,'lineprops',{'Color',[dred alphaRT(c)],'LineWidth',3,'LineStyle','-'});
-        set(gca,'FontSize',16,'xlim',[-100,1400],'xtick',[],...
+        set(gca,'FontSize',16,'xlim',[-100,1400],'xtick',[-100,0:200:1200],...
             'ylim',yN2c,'ytick',ytickN2c);%,'ylim',[-1.5,0.5]);
         hss4((bin-1)*2+c)=line([mean(mean(RT_group_times(c,:,bin),1),2) mean(mean(RT_group_times(c,:,bin),1),2)],...
             yN2c,'Color',[dred alphaRT(c)],'LineWidth',1.5,'LineStyle','--');
         ylabel('N2c Amplitude (\muVolts)','FontName','Arial','FontSize',16,'fontweight','bold')
-       % xlabel('Time (ms)','FontName','Arial','FontSize',16)
-       % title(' N2c x RT Bins')
+        xlabel('Time (ms)','FontName','Arial','FontSize',16,'fontweight','bold')
         line([0 0],ylim,'Color','k','LineWidth',3,'LineStyle','-');
         line(xlim,[0 0],'Color','k','LineWidth',1.5,'LineStyle','-');
         %     legend(h,side_tags, ...
@@ -337,7 +336,6 @@ for bin = 1:1
             yN2i,'Color',[dblue alphaRT(c)],'LineWidth',1.5,'LineStyle','--');
         ylabel('N2i Amplitude (\muVolts)','FontName','Arial','FontSize',16,'fontweight','bold')
         xlabel('Time (ms)','FontName','Arial','FontSize',16,'fontweight','bold')
-       % title(' N2c x RT Bins')
         line([0 0],ylim,'Color','k','LineWidth',3,'LineStyle','-');
         line(xlim,[0 0],'Color','k','LineWidth',1.5,'LineStyle','-');
         %     legend(h,side_tags, ...
@@ -362,8 +360,6 @@ for bin = 1:1
         (c-1)*2+bin
         hss1((bin-1)*2+c) = shadedErrorBar(t,meanCPP,stdCPP,'lineprops',{'Color',[Cols(c+3*(bin-1),:)],'LineWidth',3,'LineStyle','-'});
         set(gca,'FontSize',16,'xlim',[-100,1400],'xtick',[-100 0:200:1400],'ylim',yCPP,'ytick',ytickCPP);%,'ylim',[-1.5,0.5]);
-        %hss4((bin-1)*2+c)=line([mean(mean(RT_group_times(c,:,bin),1),2) mean(mean(RT_group_times(c,:,bin),1),2)],...
-         %   ylim,'Color',[dgreen alphaRT((bin-1)*2+c)],'LineWidth',1.5,'LineStyle','--');
         ylabel('CPP Amplitude (\muVolts)','FontName','Arial','FontSize',16)
         xlabel('Time from evidence (ms)','FontName','Arial','FontSize',16)
         line([0 0],yCPP,'Color','k','LineWidth',3,'LineStyle','-');
@@ -417,7 +413,7 @@ for bin = 1:1
         hss4((bin-1)*2+c)=line([mean(mean(RT_group_times(c,:,bin),1),2) mean(mean(RT_group_times(c,:,bin),1),2)],...
             [-10 30],'Color',[RTCols alphaRT(c)],'LineWidth',1.5,'LineStyle','-');
         ylabel('Amplitude (\muVolts)','FontName','Arial','FontSize',16)
-        xlabel('from stimulus (ms)','FontName','Arial','FontSize',16)
+        xlabel('time from stimulus (ms)','FontName','Arial','FontSize',16)
         line([0 0],yCPP,'Color','k','LineWidth',3.0,'LineStyle','-');
         line(xlim,[0 0],'Color','k','LineWidth',1.5,'LineStyle','-');
         %     legend(h,side_tags, ...
@@ -442,7 +438,7 @@ for bin = 1:1
         hss4((bin-1)*2+c)=line([mean(mean(RT_group_times(c,:,bin),1),2) mean(mean(RT_group_times(c,:,bin),1),2)],...
             [-0.5 0.5],'Color',[RTCols alphaRT(c)],'LineWidth',1.5,'LineStyle','-');
         ylabel('Amplitude (\muVolts)','FontName','Arial','FontSize',16)
-        xlabel('from stimulus (ms)','FontName','Arial','FontSize',16)
+        xlabel('time from stimulus (ms)','FontName','Arial','FontSize',16)
         line([0 0],yCPP,'Color','k','LineWidth',3.0,'LineStyle','-');
         line(xlim,[0 0],'Color','k','LineWidth',1.5,'LineStyle','-');
         %     legend(h,side_tags, ...
