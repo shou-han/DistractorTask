@@ -289,7 +289,7 @@ N2iLatencyNoperm<- nopermANOVA(plevelAll,'meanN2iLatency')
 print("Repeated Measures ANOVA  for the effect of distractor on N2i Latency:")
 print(N2iLatencyNoperm)
 ```
-## CPP
+## CPP (-450ms to -50ms)
 ```{r CPP  Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
 knitr::include_graphics((rep('../analysisScript/Figures/CPPxdist10dots.png')))
 knitr::include_graphics((rep('../analysisScript/Figures/CPPrxdist10dots.png')))

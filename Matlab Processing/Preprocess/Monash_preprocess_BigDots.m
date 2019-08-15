@@ -17,7 +17,7 @@ ERP_samps = length(ts);
 %% Filters
 
 LPFcutoff_35Hz=35;       % Low Pass Filter cutoff
-LPFcutoff_8Hz=5;       % Low Pass Filter cutoff
+LPFcutoff_8Hz=8;       % Low Pass Filter cutoff
 
 HPFcutoff=0.1;       % High Pass Filter cutoff
 
