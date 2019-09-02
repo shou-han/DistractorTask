@@ -2,6 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
-R_analysis_10dots.html
-R_analysis_150dot.html
+R_analysis_10_150dot_files/
 analysis_output.txt
+*.xlsx
+*.xlsx#
+*.html
