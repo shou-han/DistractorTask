@@ -1,5 +1,5 @@
 ---
-title: "Dot Stats 10"
+title: "Dot Stats 150"
 author: "Shou-Han Zhou"
 date: "12 August 2019"
 output: html_document
@@ -38,7 +38,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r libraries, echo=FALSE,include=FALSE}
 if(!require(lavaan)){install.packages("lavaan")}
-if(!require(xlsx)){install.packages("xlsx")}
 library("lavaan")
 if(!require(psych)){install.packages("psych")}
 if(!require(nlme)){install.packages("nlme")}
@@ -83,10 +82,10 @@ genData<-function(dataRaw){
 
 nopermANOVA<-function(dataInterest,interestValue){
     # the rest
-  distdata<- dataInterest %>% group_by(ID,distractor)%>%
-      select(ID, distractor, interestValue) %>%
+  distdata<- dataInterest %>% group_by(ID,distractor,experiment)%>%
+      select(ID, distractor, experiment,interestValue) %>%
       na.omit() %>%
-      gather(key_all, dv, -ID,  -distractor)
+      gather(key_all, dv, -ID,  -distractor, -experiment)
   distMean<- tapply(distdata$dv, distdata$distractor,mean)
   # the binsdata
   bindata<- dataInterest %>% group_by(ID,distractor)%>%
@@ -99,11 +98,25 @@ nopermANOVA<-function(dataInterest,interestValue){
                           , within = .(distractor)
                           , within_full = .(distractor)
                           , within_covariates = NULL
-                          , between = NULL
+                          , between = .(experiment)
                           , between_covariates = NULL
                           , observed = NULL
                           , type = 3)
-  return(list(distMean,distractData))
+  return(list(distMean,distractData))#,allstatData))
+}
+
+permANOVA<-function(dataInterest,interestValue,permNo){
+        # the rest
+    distdata<- dataInterest %>% group_by(ID,distractor)%>%
+        select(ID, distractor, interestValue) %>%
+        na.omit() %>%
+        gather(key_all, dv, -ID,  -distractor)
+    # the binsdata
+    bindata<- dataInterest %>% group_by(ID,distractor)%>%
+        select(ID, distractor, interestValue) %>%
+        na.omit() %>%
+        gather(key_all, dv, -ID, -distractor)
+    return()
 }
 
 nopermANOVAO<-function(dataInterest,interestValue){
@@ -138,20 +151,7 @@ nopermANOVAO<-function(dataInterest,interestValue){
   return(list(distractData,binData))
 }
 
-xlsx.writeMultipleData <- function (file, ...)
-  {
-    require(xlsx, quietly = TRUE)
-    objects <- list(...)
-    fargs <- as.list(match.call(expand.dots = TRUE))
-    objnames <- as.character(fargs)[-c(1, 2)]
-    nobjects <- length(objects)
-    for (i in 1:nobjects) {
-        if (i == 1)
-            write.xlsx(objects[[i]], file, sheetName = objnames[i])
-        else write.xlsx(objects[[i]], file, sheetName = objnames[i],
-            append = TRUE)
-    }
-  }
+
 # a function for calculating standard error 
 se=function(x) sqrt(var(x, na.rm=TRUE)/length(x[!is.na(x)])) 
 ```
@@ -163,25 +163,54 @@ setwd("/home/szhou/yn70_scratch/ShouHan/Distractors/mainProgs_final/R_stats")
 paths = "/home/szhou/yn70_scratch/ShouHan/Distractors/mainProgs_final/R_stats"
 source( "indirectMLM.R" )
 library( boot )
-dataRawA <-read.csv("Stats/mediateCSDAccold.csv", header=FALSE, stringsAsFactors = FALSE)
-dataRaw <- read.csv("Stats/mediateCSDold.csv", header=FALSE, stringsAsFactors = FALSE)
-dataRawG<-read.csv("Stats/mediateGsold.csv", header=FALSE, stringsAsFactors = FALSE)
-dataRawGB<-read.csv("Stats/mediateGBsold.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRawA <-read.csv("Stats/mediateCSDAcc.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRaw <- read.csv("Stats/mediateCSD.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRawG<-read.csv("Stats/mediateGs.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRawAold <-read.csv("Stats/mediateCSDAccold.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRawold <- read.csv("Stats/mediateCSDold.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRawGold<-read.csv("Stats/mediateGsold.csv", header=FALSE, stringsAsFactors = FALSE)
+dataRawGBold<-read.csv("Stats/mediateGBsold.csv", header=FALSE, stringsAsFactors = FALSE)
+
 dataA<-genData(dataRawA);
 dataERP<-genData(dataRaw)
-dataERPG<-genData(dataRawG)
-dataBetaG<-genData(dataRawGB)
-#library(plyr)
-dataF<-dataERP %>%rename(distractor=c)
+dataERPG<-genData(dataRawG); 
+dataERPG<-dataERPG%>%rename(distractor="c")
+dataAold<-genData(dataRawAold);
+dataERPold<-genData(dataRawold)
+dataERPGold<-genData(dataRawGold)
+dataERPGold<-dataERPGold%>%rename(distractor="c")
 
-dataF<-dataF %>% #make factors
+#library(plyr)
+dataERPold <- dataERPold %>% 
+  mutate(experiment = "10dots") %>%
+  mutate(subjectAll = subjectAll + 30)
+dataERP <- dataERP %>%
+  mutate(experiment = "150dots")
+dataF<-dataERP %>%
+  full_join(dataERPold) %>%
+  rename(distractor=c)
+
+dataAold<-dataAold%>%
+  mutate(experiment= "10dots")%>%
+  mutate(subjectAll = subjectAll + 30)
+dataA <- dataA %>%
+  mutate(experiment= "150dots")
+dataAAold<-dataA%>%
+  full_join(dataAold) 
+
+# screen for outliers
+#dataF<-filter(dataF, RT<1500, RT>150)
+
+dataF$log_RT<-log(dataF$RT) #log
+
+dataF<-dataF %>% #make factor
   rename(., ID=subjectAll) %>%
-  mutate_each_(funs(factor),c("distractor","ID","bins")) #make factor
+  mutate_each_(funs(factor),c("distractor","ID","bins","experiment")) #make factor
 levels(dataF$distractor)<-list("nodist"="1","dist"="2")
 
 #summarise statistics
-plevelAll <- dataF %>% group_by(ID,distractor) %>%
-                    summarise(meanRT  = mean(RT, na.rm=TRUE),
+plevelAll <- dataF %>% group_by(ID,distractor, experiment) %>%
+                    summarise(meanRT  = mean(RT*2, na.rm=TRUE),
                               meanN2pcpeak = mean(N2pcpeak,na.rm=TRUE),
                               meanN2cpeak = mean(N2cpeak,na.rm=TRUE),
                               meanN2ipeak = mean(N2ipeak,na.rm=TRUE),
@@ -189,22 +218,21 @@ plevelAll <- dataF %>% group_by(ID,distractor) %>%
                               meanN2iLatency = mean(N2iLatency,na.rm=TRUE),
                               meanN2pcLatency = mean(N2pcLatency,na.rm=TRUE),                                   
                               meanCPPrslope = mean(CPPrslope,na.rm=TRUE),
-                              meanCPPrslope = mean(CPPrslope,na.rm=TRUE),
                               meanCPPlevel = mean(CPPlevel,na.rm=TRUE),
                               meanCPPonset = mean(CPPonset,na.rm=TRUE),
                               meanBetarSlope = mean(BetarSlope,na.rm=TRUE),
                               meanBetaLevel = mean(BetaLevel,na.rm=TRUE),
-                              meanAlphapower = mean(Alphapower,na.rm=TRUE)
+                              meanAlphaPower = mean(Alphapower,na.rm=TRUE)
                               )
 
 plevelALLCHH <- plevelAll %>% 
-                group_by(distractor)%>%
-                select("ID","distractor",contains("mean"))
+                group_by(distractor, experiment)%>%
+                select("ID","distractor","experiment",contains("mean"))
 # test for normality
 options(scipen=99)
 Normality_tests <-plevelALLCHH %>%ungroup()%>%
-  select("ID","distractor",contains("mean"))%>%
-                    gather(key, value,-ID,-distractor) %>%
+  select("ID","distractor","experiment",contains("mean"))%>%
+                    gather(key, value,-ID,-distractor,-experiment) %>%
                     group_by(key)%>%
  do(ShapiroWilk_p_value= shapiro.test(.$value)[2],
                        Anderson_Darling_p_value = nortest::ad.test(.$value)[2], 
@@ -227,54 +255,97 @@ kable(Normality_tests,
       caption="Normality tests")
 ```
 ## Behaviour: Response Time
-```{r Response Time Graph, out.width='50%', fig.show='hold', echo=FALSE}
-knitr::include_graphics((rep('../analysisScript/Figures/RT_bar_graphs10dots.png')))
+```{r Response Time Graph, out.width='50%', fig.show='hold', echo=FALSE, include=FALSE}
+knitr::include_graphics((rep('../analysisScript/Figures/RT_bar_graphs150dots.png')))
 ```
-```{r RT stats, echo=FALSE, warning=FALSE, comment=''}
-data<-dataA %>% #make factors
+```{r Response Time}
+
+meanRTNoperm<- nopermANOVA(plevelAll,'meanRT')
+print("Repeated Measures ANOVA  for the effect of distractor and experiment effect on Response Time:")
+print(meanRTNoperm)
+
+# Plot the speed
+SpeedAllID<-plevelAll%>% group_by(distractor,experiment) %>%
+                  summarise(meanRTZ  = mean(meanRT, na.rm=TRUE), stdRT = se(meanRT))
+#png('Figures/anovaRT.png', width = 400, heigh=350, units="px")
+plotSpeed <- SpeedAllID %>% ggplot()+aes(x=distractor, y=meanRTZ, color=experiment) +
+    geom_errorbar(aes(ymin=meanRTZ-stdRT,ymax=meanRTZ+stdRT), width=0.1)+
+    geom_line(aes(x=distractor, y=meanRTZ,group=experiment))+
+    geom_point() +
+    xlab("Distractor") + ylab(expression(paste("RT (ms)"))) +
+    theme(axis.title.x = element_text(face="bold", size=20),
+          axis.text.x  = element_text(face="bold", angle=0,  size=18),
+          axis.title.y = element_text(face="bold", size=20),
+          axis.text.y  = element_text(face="bold", angle=0, size=18),
+          legend.text  =element_text(size=18),
+          legend.title = element_text(size=20),
+          panel.background = element_blank())+
+    #scale_x_discrete(labels=c("DA", "DP"))+
+    scale_color_discrete((name="Experiment"))
+plotSpeed 
+dev.off()
+```
+```{r Accuracy}
+## ACCURACY
+data<-dataAAold %>% #make factors
   mutate(side= ifelse(side==1,"Left","Right"),
          c= ifelse(c==2,"dist","nodist"),
          hand = ifelse(hand==1,"left","right"),
-         hit = ifelse(is.na(hit),"miss", ifelse(hit==1,"hit","wrongbutton")))%>% #rename
-  rename(., ID=subjectAll, Accuracy = hit, Hemi=side) %>%
-  mutate_each_(funs(factor),c("c","Hemi","iti","ID","hand")) #make factor
-data$RT=data$RT*2
-data<-filter(data, RT<1500, RT>150)
+         hit = ifelse(is.na(hit),"miss", ifelse(hit==1,"hit","miss")))%>% #rename
+  rename(., ID=subjectAll, Accuracy = hit, Hemi=side, distractor=c) %>%
+  mutate_each_(funs(factor),c("distractor","Hemi","iti","ID","hand","experiment")) #make factor
+testdata <- data %>% group_by(ID,distractor, experiment) %>% 
+  mutate(hitwronmiss = ifelse(Accuracy=="hit",1,(ifelse(Accuracy=="miss",1,1))),
+         totalTrials = sum(hitwronmiss))%>%
+  filter(Accuracy=="hit")
+AccID<-testdata%>% group_by(ID,distractor,Accuracy,experiment,totalTrials) %>%
+                  summarise(totalNo  = sum(hitwronmiss, na.rm=TRUE))%>%
+                  mutate(pect = as.numeric(totalNo/totalTrials*100))
+ANOVA_data <- AccID %>% group_by(ID,distractor,experiment) %>%
+    select(ID, distractor,experiment,pect) %>%
+    na.omit() %>%
+    gather(key, dv, -ID,-distractor,-experiment)
+ANOVA_dataM <- AccID %>% group_by(distractor) %>%summarise(meanpercT  = mean(pect , na.rm=TRUE))
 
-data$log_RT<-(data$RT) #log
-#####Z-score each participant's log_RT data ####
-data$IDbyITIbyHemifield<-interaction(data$ID, data$iti, data$hand)
-#calculate mean and sd 
-m <- tapply(data$log_RT,data$IDbyITIbyHemifield,mean, na.rm = T)
-s <- tapply(data$log_RT,data$IDbyITIbyHemifield,sd, na.rm = T)
-#calculate log_RT.Z and save it inside data.frame
-data$log_RT.Z <- as.numeric((data$log_RT-m[data$IDbyITIbyHemifield])/s[data$IDbyITIbyHemifield])
-#Remove trials where absolute log_RT.Z>3 (i.e. remove outlier RTs)
-data<-data[!abs(data$log_RT.Z)>3,]
-#######################RT##################################
-Speed_checker <- data %>% group_by(ID,c,Hemi,hand) %>%
-                    summarise(meanRTZ  = mean(RT , na.rm=TRUE))
-speedmean<- tapply(Speed_checker$meanRTZ, Speed_checker$c,mean)
-
-print(list(speedmean))
-anovaRT <- ezANOVA(data = Speed_checker
-                        , dv = .(meanRTZ)
+ACC_ANOVA <- ezANOVA(data = ANOVA_data
+                        , dv = .(dv)
                         , wid = .(ID)
-                        , within = .(c,Hemi)
+                        , within = .(distractor)
                         , within_covariates = NULL
-                        , between = NULL
+                        , between = .(experiment)
                         , between_covariates = NULL
                         , observed = NULL
                         , type = 3)
-print("Repeated Measures ANOVA  for the effect of distractor on RT:")
-print(anovaRT);
+print("Repeated Measures ANOVA  for the effect of Distractor on Accuracy:")
+print(ACC_ANOVA);
+
+# Plot the accuracy
+SpeedAllID<-AccID%>% group_by(distractor,experiment) %>%
+                  summarise(meanACC  = mean(pect, na.rm=TRUE), stdACC = se(pect))
+#png('Figures/anovaRT.png', width = 400, heigh=350, units="px")
+plotSpeed <- SpeedAllID %>% ggplot()+aes(x=distractor, y=meanACC, color=experiment) +
+    geom_errorbar(aes(ymin=meanACC-stdACC,ymax=meanACC+stdACC), width=0.1)+
+    geom_line(aes(x=distractor, y=meanACC,group=experiment))+
+    geom_point() +
+    xlab("Distractor") + ylab(expression(paste("Accuracy"))) +
+    theme(axis.title.x = element_text(face="bold", size=20),
+          axis.text.x  = element_text(face="bold", angle=0,  size=18),
+          axis.title.y = element_text(face="bold", size=20),
+          axis.text.y  = element_text(face="bold", angle=0, size=18),
+          legend.text  =element_text(size=18),
+          legend.title = element_text(size=20),
+          panel.background = element_blank())+
+    #scale_x_discrete(labels=c("DA", "DP"))+
+    scale_color_discrete((name="Experiment"))
+plotSpeed 
+dev.off()
 ```
 ## N2
 ```{r N2pc Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
-knitr::include_graphics((rep('../analysisScript/Figures/N2pcxdist10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/N2cxdist10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/N2ixdist10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/N2c_i10dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/N2pcxdist150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/N2cxdist150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/N2ixdist150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/N2c_i150dots.png')))
 ```
 ```{r test for N2s, echo=FALSE, warning=FALSE, comment='', null_prefix=TRUE}
 
@@ -304,117 +375,122 @@ print(N2iLatencyNoperm)
 ```
 ## CPP (-450ms to -50ms)
 ```{r CPP  Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
-knitr::include_graphics((rep('../analysisScript/Figures/CPPxdist10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/CPPrxdist10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/CPP10dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/CPPxdist150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/CPPrxdist150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/CPP150dots.png')))
 ```
 ```{r test for CPPr slope, echo=FALSE, warning=FALSE, comment=''}
 CPPrslopeNoperm<- nopermANOVA(plevelAll,'meanCPPrslope')
 
-print("Factorial Permutation test for the effect of distractor on mean resp CPP slope:")
+print("Repeated Measures ANOVA  for the effect of distractor on mean resp CPP slope:")
 print(CPPrslopeNoperm)
 ```
 ```{r test for CPP onset, echo=FALSE, warning=FALSE, comment=''}
-temp1<-plevelAll[!(plevelAll$ID==5 | plevelAll$ID==3),]
+temp1<-plevelAll[!(plevelAll$ID==4 |plevelAll$ID==35 | plevelAll$ID==33),]
+#temp1<-temp1[!(temp1$ID==17),]
 CPPOnsetNoperm<- nopermANOVA(temp1,'meanCPPonset')
-print("Factorial Permutation test for the effect of distractor on mean CPP onset:")
+print("Repeated Measures ANOVA  for the effect of distractor on mean CPP onset:")
 print(CPPOnsetNoperm)
 ```
 ```{r test for CPP level, echo=FALSE, warning=FALSE, comment=''}
 CPPLevelNoperm<- nopermANOVA(plevelAll,'meanCPPlevel')
-print("Factorial Permutation test for the effect of distractor on mean CPP amplitude:")
+print("Repeated Measures ANOVA for the effect of distractor on mean CPP resp amplitude:")
 print(CPPLevelNoperm)
 ```
-# Beta  (11-21Hz)
+# Beta (11-21Hz)
 ```{r Beta Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
-knitr::include_graphics((rep('../analysisScript/Figures/beta_stim10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/beta_resp10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/betaR10dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/beta_stim150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/beta_resp150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/betaR150dots.png')))
 ```
 ```{r test for betaslopes, echo=FALSE, warning=FALSE, comment=''}
  BetarslopeNoPerm<- nopermANOVA(plevelAll,'meanBetarSlope')
-print("Factorial Permutation test for the effect of distractor on mean contra Beta slope:")
+print("Repeated Measures ANOVA for the effect of distractor on mean contra Beta slope:")
 print(BetarslopeNoPerm)
 ```
 
 ```{r test for beta amplitude, echo=FALSE, warning=FALSE, comment=''}
  BetaLevelNoPerm<- nopermANOVA(plevelAll,'meanBetaLevel')
-print("Factorial Permutation test for the effect of distractor on mean contra Beta amplitude:")
+print("Repeated Measures ANOVA  for the effect of distractor on mean contra Beta amplitude:")
 print(BetaLevelNoPerm)
 ```
 # Alpha Power (9-11Hz)
 ```{r Alpha Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
-knitr::include_graphics((rep('../analysisScript/Figures/alpha_sides10dots.png')))
-knitr::include_graphics((rep('../analysisScript/Figures/alphapre10dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/alpha_sides150dots.png')))
+knitr::include_graphics((rep('../analysisScript/Figures/alphapre150dots.png')))
 ```
 ```{r test for pre-alpha power, echo=FALSE, warning=FALSE, comment=''}
- BetaLevelNoPerm<- nopermANOVA(plevelAll,'meanAlphapower')
-print("Factorial Permutation test for the effect of distractor on mean Pre-Target Alpha Power:")
-print(BetaLevelNoPerm)
+ AlphaLevelNoperm<- nopermANOVA(plevelAll,'meanAlphaPower')
+print("Repeated Measures ANOVA  for the effect of distractor on mean Pre-Target Alpha Power:")
+print(AlphaLevelNoperm)
 ```
 # Mediations
 ##  Distractor -> resp CPP slope ->RT
 ```{r CPPr slope, echo=FALSE, warning=FALSE, comment=''}
+
 mediationModel<-'
-RT ~ b*CPPrslope + cp*c 
-CPPrslope ~ a*c 
+RT ~ b*CPPrslope + cp*distractor 
+CPPrslope ~ a*distractor
 mediation:=a*b
 direct:=cp
 total := a*b +cp
 '
-mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLR")
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="ml", se="robust.huber.white")
 summary(mediation.res)
 ```
+## Distractor -> CPPonset -> RT
+```{r CPPonset, echo=FALSE, warning=FALSE, comment=''}
+if(!require(lavaan)){install.packages("lavaan")}
+library("lavaan")
+mediationModel<-'
+RT ~ b*CPPonset + cp*distractor 
+CPPonset ~ a*distractor
+mediation:=a*b
+direct:=cp
+total := a*b +cp
+'
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
+summary(mediation.res)
+```
+
 ##  Distractor -> N2i peak amplitude ->RT
 ```{r N2ipeak , echo=FALSE, warning=FALSE, comment=''}
 mediationModel<-'
-RT ~ b*N2ipeak + cp*c 
-N2ipeak ~ a*c
+RT ~ b*N2ipeak + cp*distractor
+N2ipeak ~ a*distractor
 mediation:=a*b
 direct:=cp
 total := a*b +cp
 '
-mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLR")
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
 summary(mediation.res)
 ```
+
 ## Distractor -> N2c peak amplitude ->RT
 ```{r N2cpeak , echo=FALSE, warning=FALSE, comment=''}
 mediationModel<-'
-RT ~ b*N2cpeak + cp*c 
-N2cpeak ~ a*c
+RT ~ b*N2cpeak + cp*distractor 
+N2cpeak ~ a*distractor
 mediation:=a*b
 direct:=cp
 total := a*b +cp
 '
-mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLR")
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
 summary(mediation.res)
 ```
-##  Distractor -> Beta slope ->RT
-```{r Beta slope, echo=FALSE, warning=FALSE, comment=''}
-mediationModel<-'
-RT ~ b*BetarSlope + cp*c 
-BetarSlope ~ a*c 
-mediation:=a*b
-direct:=cp
-total := a*b +cp
-'
-mediation.res<-sem(mediationModel, data=dataBetaG, estimator="MLR")
-summary(mediation.res)
-```
+
 ## Distractor -> N2i peak amplitude -> resp CPP slope ->RT
 ```{r CPPrslope and N2ipeak, echo=FALSE, warning=FALSE, comment=''}
 # follow Taylor et al 2008
 mediationModel<-'
-RT ~ p33*CPPrslope + p32*N2ipeak + p31*c 
-CPPrslope ~ p22*N2ipeak + p21*c 
-N2ipeak~p11*c
+RT ~ p33*CPPrslope + p32*N2ipeak + p31*distractor 
+CPPrslope ~ p22*N2ipeak + p21*distractor 
+N2ipeak~p11*distractor
 mediation:=p11*p22*p33
 direct := p31
 total := p11*p22*p33+p11*p32+p21*p33+p31
 '
-mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLR")
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
 summary(mediation.res)
 ```
-
-
 

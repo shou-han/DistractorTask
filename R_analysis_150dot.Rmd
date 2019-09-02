@@ -271,7 +271,6 @@ anovaRT <- ezANOVA(data = Speed_checker
                         , type = 3)
 print("Repeated Measures ANOVA  for the effect of distractor on RT:")
 print(anovaRT);
-
 ```
 ## N2
 ```{r N2pc Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
@@ -367,7 +366,7 @@ mediation:=a*b
 direct:=cp
 total := a*b +cp
 '
-mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLR")
 summary(mediation.res)
 ```
 ## Distractor -> CPPonset -> RT
@@ -381,7 +380,7 @@ mediation:=a*b
 direct:=cp
 total := a*b +cp
 '
-mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLR")
 summary(mediation.res)
 ```
 
@@ -394,7 +393,7 @@ mediation:=a*b
 direct:=cp
 total := a*b +cp
 '
-mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLR")
 summary(mediation.res)
 ```
 
@@ -407,7 +406,7 @@ mediation:=a*b
 direct:=cp
 total := a*b +cp
 '
-mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLR")
 summary(mediation.res)
 ```
 
@@ -422,7 +421,7 @@ mediation:=p11*p22*p33
 direct := p31
 total := p11*p22*p33+p11*p32+p21*p33+p31
 '
-mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLM")
+mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLR")
 summary(mediation.res)
 ```
 
