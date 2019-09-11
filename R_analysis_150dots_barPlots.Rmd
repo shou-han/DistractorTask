@@ -220,11 +220,13 @@ plotN2figure<-function(datapoints,interestValue,xlabelT, ylabelT,ylimits){
                   gather(key_all, dv, -ID,  -distractor)%>%
                     summarize(minInt = mean(-dv, na.rm=TRUE)) 
   summaryPlot<-dataPlot%>% group_by(distractor) %>% 
-                    summarize(stdInt=sd(minInt,na.rm=TRUE),minInt = mean(minInt, na.rm=TRUE) )
+                    summarize(stdInt=se(minInt),minInt = mean(minInt, na.rm=TRUE) )
   
-  plotInt <- dataPlot %>% ggplot()+aes(x=distractor, y=minInt,color=distractor) +
-  geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.3)+  
-  geom_pointrange(aes(ymin=minInt-stdInt,ymax=minInt+stdInt),position = position_dodge(0.9),data=summaryPlot)+  
+  plotInt <- summaryPlot %>% ggplot()+aes(x=distractor, y=minInt,color=distractor,fill=distractor) +
+  #geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.3)+  
+  geom_pointrange(aes(ymin=minInt-stdInt,ymax=minInt+stdInt),position = position_dodge(0.9),data=summaryPlot)+
+      geom_col(width=0.5,alpha=0.3)+
+  #  geom_boxplot( width=0.15,fatten=NULL)+
      xlab(xlabelT) + ylab(ylabelT)+
     theme(axis.title.x = element_text(face="bold", size=20),
           axis.text.x  = element_text(face="bold", angle=0,  size=18),
@@ -234,12 +236,12 @@ plotN2figure<-function(datapoints,interestValue,xlabelT, ylabelT,ylimits){
           legend.title = element_text(size=20),
           legend.position="none",
           panel.background = element_blank())+
-    scale_x_discrete(labels=c("D-", "D+"))+
-    scale_color_discrete((name=xlabelT), labels=c("D-","D+"))+
-    ylim(ylimits)+
+    scale_x_discrete(labels=c("Absent", "Present"))+
+    scale_color_discrete((name=xlabelT), labels=c("Absent","Present"))+
+      coord_cartesian(ylim=ylimits)+
      geom_hline(yintercept=0, color = "black", size=0.5,alpha=0.5)+
-  #scale_fill_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+"))  +
-    scale_color_manual(values=colorsUsed,name=xlabelT, labels=c("D-", "D+"))
+  scale_fill_manual(values=colorsUsed,name=xlabelT)  +
+    scale_color_manual(values=colorsUsed,name=xlabelT)
    # stat_compare_means(data=dataPlot, paired=TRUE, method="t.test",comparisons=list(c("DA","DP")),label="p.signif")
   return(list(plotInt))
 }
@@ -372,7 +374,7 @@ print(statRT);
 savefile<-file.path(figpaths,"BehaviourRT.png")
 png(savefile,width=400,heigh=350, units="px")
 Speed_checker_part <- data %>% group_by(ID,distractor) %>% summarise(meanRT  = mean(RT , na.rm=TRUE))
-Speed_checker_summary<- Speed_checker_part %>% group_by(distractor) %>% summarise(seRT = sd(meanRT,na.rm=TRUE), meanRT  = mean(meanRT , na.rm=TRUE))
+Speed_checker_summary<- Speed_checker_part %>% group_by(distractor) %>% summarise(seRT = se(meanRT), meanRT  = mean(meanRT , na.rm=TRUE))
 plotbehaviour <- Speed_checker_summary %>% ggplot()+aes(x=distractor, y=meanRT, color=distractor,fill=distractor) +
      # geom_violin(trim=FALSE, position=position_dodge((0.9))) +
   geom_col(width=0.5,alpha=0.3)+
@@ -387,12 +389,12 @@ plotbehaviour <- Speed_checker_summary %>% ggplot()+aes(x=distractor, y=meanRT, 
           legend.title = element_text(size=20),
           legend.position="none",
           panel.background = element_blank())+
-    scale_x_discrete(labels=c("D-", "D+"))+
-  scale_color_discrete((name="Distractor"),labels=c("D-", "D+"))+
-  coord_cartesian(ylim=c(700,1200))+   
-  scale_fill_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+"))  +
-  scale_color_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+"))+
-  stat_compare_means(data=Speed_checker_part, paired=TRUE, method="t.test",comparisons=list(c("DA","DP")),label="p.signif")
+    scale_x_discrete(labels=c("Absent", "Present"))+
+  scale_color_discrete((name="Distractor"),labels=c("Absent", "Present"))+
+  coord_cartesian(ylim=c(800,1100))+   
+  scale_fill_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))  +
+  scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))+
+  stat_compare_means(data=Speed_checker_part, paired=TRUE, method="t.test",comparisons=list(c("DA","DP")),label="p.signif",label.y = 1050)
 
 plotbehaviour
 dev.off()
@@ -451,7 +453,7 @@ print(statRT);
 savefile<-file.path(figpaths,"CorrectResponse.png")
 png(savefile,width=400,heigh=350, units="px")
 Accuracy_part <- AccID %>% group_by(ID,distractor)%>% summarise(meanpercT  = mean(pect , na.rm=TRUE))
-Accuracy_summary<- Accuracy_part %>% group_by(distractor) %>% summarise(sepercT  = sd(meanpercT,na.rm=TRUE),meanpercT  = mean(meanpercT , na.rm=TRUE))
+Accuracy_summary<- Accuracy_part %>% group_by(distractor) %>% summarise(sepercT  = se(meanpercT),meanpercT  = mean(meanpercT , na.rm=TRUE))
 
 plotbehaviour <- Accuracy_summary %>% ggplot()+aes(x=distractor, y=meanpercT, fill=distractor,color=distractor) +
      # geom_violin(position = position_dodge(0.9)) +
@@ -468,10 +470,10 @@ plotbehaviour <- Accuracy_summary %>% ggplot()+aes(x=distractor, y=meanpercT, fi
           legend.title = element_text(size=20),
           legend.position="none",
           panel.background = element_blank())+
-    scale_x_discrete(labels=c("D-", "D+"))+
-  coord_cartesian(ylim=c(60,100))+   
-  scale_fill_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+"))  +
-    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+")) 
+    scale_x_discrete(labels=c("Absent", "Present"))+
+  coord_cartesian(ylim=c(80,100))+   
+  scale_fill_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))  +
+    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present")) 
   #stat_compare_means(data=Accuracy_part, paired=TRUE, method="t.test",comparisons=list(c("DA","DP")),label="p.signif",label.y=120)
 
 plotbehaviour
@@ -518,7 +520,7 @@ print(N2iLatencyNoperm)
 ```{r N2pc graph, echo=FALSE, warning=FALSE, comment='', null_prefix=TRUE}
 savefile<-file.path(figpaths,"N2pc.png")
 png(savefile,width=400,heigh=350, units="px")
-plotN2pc<-plotN2figure(plevelAll,"meanN2pcpeak",  "Distractor", expression(paste("N2pc Peak Amplitude (" ,mu, "V)")),c(-50,0))
+plotN2pc<-plotN2figure(plevelAll,"meanN2pcpeak",  "Distractor", expression(paste("N2pc Peak Amplitude (" ,mu, "V)")),c(-30,0))
 plotN2pc<-plotN2pc
 plotN2pc
 dev.off()
@@ -526,7 +528,7 @@ plotN2pc
 plevelAll2<-plevelAll%>%mutate(meanN2pcLatency=-meanN2pcLatency)
 savefile<-file.path(figpaths,"N2pcL.png")
 png(savefile,width=400,heigh=350, units="px")
-plotN2pcL<-plotN2figure(plevelAll2,"meanN2pcLatency",  "Distractor", expression(paste("N2pc Peak Latency (" ,mu, "V)")),c(150, 500))
+plotN2pcL<-plotN2figure(plevelAll2,"meanN2pcLatency",  "Distractor", expression(paste("N2pc Peak Latency (ms)")),c(250, 400))
 plotN2pcL
 dev.off()
 plotN2pcL
@@ -575,14 +577,14 @@ pairs(emmeans(aov_contradist,~contradist),adjust="bonferroni")
 # violin graphs 
 savefile<-file.path(figpaths,"N2c.png")
 png(savefile,width=400,heigh=350, units="px")
-plotN2c<-plotN2figure(plevelAll,"meanN2cpeak","Distractor", expression(paste("N2c Peak Amplitude (" ,mu, "V)")),c(-50,20))
+plotN2c<-plotN2figure(plevelAll,"meanN2cpeak","Distractor", expression(paste("N2c Peak Amplitude (" ,mu, "V)")),c(-25,5))
 plotN2c<-plotN2c
 plotN2c
 dev.off()
 plotN2c
 savefile<-file.path(figpaths,"N2i.png")
 png(savefile,width=400,heigh=350, units="px")
-plotN2i<-plotN2figure(plevelAll,"meanN2ipeak","Distractor", expression(paste("N2i Peak Amplitude (" ,mu, "V)")),c(-50, 20))
+plotN2i<-plotN2figure(plevelAll,"meanN2ipeak","Distractor", expression(paste("N2i Peak Amplitude (" ,mu, "V)")),c(-25, 5))
 plotN2i
 dev.off()
 plotN2i
@@ -597,7 +599,7 @@ png(savefile,width=400,heigh=350, units="px")
 ANOVA_dataPlot<-ANOVA_data%>% group_by(ID,distractor,contraipsi) %>% 
                     summarize(meanN2 = mean(-dv, na.rm=TRUE)) 
 ANOVA_data_summary<-ANOVA_data%>% group_by(distractor,contraipsi) %>% 
-                    summarize(stdN2=sd(dv, na.rm=TRUE),meanN2 = mean(-dv, na.rm=TRUE) )
+                    summarize(stdN2=se(dv),meanN2 = mean(-dv, na.rm=TRUE) )
 
 plotN2Ni <- ANOVA_dataPlot %>% ggplot()+aes(x=distractor, y=meanN2,color=contraipsi) +
  #     geom_violin(trim = FALSE,  position = position_dodge(0.9))+
@@ -616,9 +618,9 @@ plotN2Ni <- ANOVA_dataPlot %>% ggplot()+aes(x=distractor, y=meanN2,color=contrai
           legend.title = element_text(size=20),
           legend.position="none",
             panel.background = element_blank())+
-    scale_x_discrete(labels=c("D-", "D+"))+
+    scale_x_discrete(labels=c("Absent", "Present"))+
     scale_color_discrete((name="Waveform"))+
-    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+"))
+    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))
 plotN2Ni
 dev.off()
 plotN2Ni  
@@ -663,13 +665,13 @@ print(N2cN2iL_Stats);
 savefile<-file.path(figpaths,"N2cL.png")
 png(savefile,width=400,heigh=350, units="px")
 plevelAll2<-plevelAll%>%mutate(meanN2cLatency=-meanN2cLatency,meanN2iLatency=-meanN2iLatency)
-plotN2cL<-plotN2figure(plevelAll2,"meanN2cLatency","Distractor", expression(paste("N2c Peak Latency (ms)")),c(150, 450))
+plotN2cL<-plotN2figure(plevelAll2,"meanN2cLatency","Distractor", expression(paste("N2c Peak Latency (ms)")),c(250, 350))
 plotN2cL
 dev.off()
 plotN2cL
 savefile<-file.path(figpaths,"N2iL.png")
 png(savefile,width=400,heigh=350, units="px")
-plotN2iL<-plotN2figure(plevelAll2,"meanN2iLatency","Distractor", expression(paste("N2i Peak Latency (ms)")),c(150, 450))
+plotN2iL<-plotN2figure(plevelAll2,"meanN2iLatency","Distractor", expression(paste("N2i Peak Latency (ms)")),c(250, 350))
 plotN2iL
 dev.off()
 plotN2iL
@@ -684,7 +686,7 @@ png(savefile,width=400,heigh=350, units="px")
 ANOVA_dataPlot<-ANOVA_data%>% group_by(ID,distractor,contraipsi) %>% 
                     summarize(meanN2L = mean(dv, na.rm=TRUE)) 
 ANOVA_data_summary<-ANOVA_data%>% group_by(distractor,contraipsi) %>% 
-                    summarize(stdN2L=sd(dv, na.rm=TRUE),meanN2L = mean(dv, na.rm=TRUE) )
+                    summarize(stdN2L=se(dv),meanN2L = mean(dv, na.rm=TRUE) )
 
 plotN2NiL <- ANOVA_dataPlot %>% ggplot()+aes(x=distractor, y=meanN2L,color=contraipsi) +
  #     geom_violin(trim = FALSE,  position = position_dodge(0.9))+
@@ -703,9 +705,9 @@ plotN2NiL <- ANOVA_dataPlot %>% ggplot()+aes(x=distractor, y=meanN2L,color=contr
           legend.position="none",
           legend.title = element_text(size=20),
           panel.background = element_blank())+
-    scale_x_discrete(labels=c("D-", "D+"))+
+    scale_x_discrete(labels=c("Absent", "Present"))+
     scale_color_discrete((name="Waveform"))+
-    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+"))
+    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))
 plotN2NiL
 dev.off()
 plotN2NiL
@@ -734,11 +736,12 @@ ANOVA_dataPlotCPP<-plevelAll%>% group_by(ID,distractor) %>%
                     select(ID,distractor,meanCPPrslope)%>% na.omit()%>%
                     summarize(mCPP = mean(meanCPPrslope, na.rm=TRUE)) 
 ANOVA_data_summaryCPP<-ANOVA_dataPlotCPP%>% group_by(distractor) %>% 
-                    summarize(stdCPP=sd(mCPP, na.rm=TRUE),mCPP = mean(mCPP, na.rm=TRUE) )
+                    summarize(stdCPP=se(mCPP),mCPP = mean(mCPP, na.rm=TRUE) )
 
-plotCPP <- ANOVA_dataPlotCPP %>% ggplot()+aes(x=distractor, y=mCPP,color=distractor) +
+plotCPP <- ANOVA_data_summaryCPP %>% ggplot()+aes(x=distractor, y=mCPP,color=distractor,fill=distractor) +
       geom_hline(yintercept=0,, color = "black", size=0.5, alpha=0.5)+
-  geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
+  geom_col(width=0.5, alpha=0.3)+
+  #geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
   geom_pointrange(aes(ymin=mCPP-stdCPP,ymax=mCPP+stdCPP),position = position_dodge(0.9),data=ANOVA_data_summaryCPP)+  
      xlab("Distractor") + ylab(expression(paste("CPP slope (" ,mu, "V/ ms)")))+
     theme(axis.title.x = element_text(face="bold", size=20),
@@ -749,10 +752,12 @@ plotCPP <- ANOVA_dataPlotCPP %>% ggplot()+aes(x=distractor, y=mCPP,color=distrac
           legend.title = element_text(size=20),
           legend.position="none",
           panel.background = element_blank())+
-    scale_x_discrete(labels=c("D-", "D+"))+
-    scale_color_discrete((name="Distractor"), labels=c("D-","D+"))+
-    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+"))+
-  ylim(-0.05,0.15)
+    scale_x_discrete(labels=c("Absent", "Present"))+
+    scale_color_discrete((name="Distractor"))+
+    scale_color_manual(values=colorsUsed,name="Distractor")+
+  scale_fill_manual(values=colorsUsed,name="Distractor") + 
+  expand_limits(x = 2, y = 0)+
+ scale_y_continuous(expand = c(0, 0),limits=c(0,0.052))
 
 plotCPP
 dev.off()
@@ -777,10 +782,11 @@ ANOVA_dataPlotCPPonset<-plevelAll%>% group_by(ID,distractor) %>%
                     select(ID,distractor,meanCPPonset)%>% na.omit()%>%
                     summarize(mCPPonset = mean(meanCPPonset, na.rm=TRUE)) 
 ANOVA_data_summaryCPPonset<-ANOVA_dataPlotCPPonset%>% group_by(distractor) %>% 
-                    summarize(stdCPPonset=sd(mCPPonset, na.rm=TRUE),mCPPonset = mean(mCPPonset, na.rm=TRUE) )
+                    summarize(stdCPPonset=se(mCPPonset),mCPPonset = mean(mCPPonset, na.rm=TRUE) )
 
-plotCPPonset <- ANOVA_dataPlotCPPonset %>% ggplot()+aes(x=distractor, y=mCPPonset,color=distractor) +
-  geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
+plotCPPonset <- ANOVA_data_summaryCPPonset %>% ggplot()+aes(x=distractor, y=mCPPonset,color=distractor,fill=distractor) +
+  #geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
+   geom_col(width=0.5, alpha=0.3)+
   geom_pointrange(aes(ymin=mCPPonset-stdCPPonset,ymax=mCPPonset+stdCPPonset),position = position_dodge(0.9),data=ANOVA_data_summaryCPPonset)+  
      xlab("Distractor") + ylab(expression("CPP Onset (ms)")) +
     theme(axis.title.x = element_text(face="bold", size=20),
@@ -791,11 +797,12 @@ plotCPPonset <- ANOVA_dataPlotCPPonset %>% ggplot()+aes(x=distractor, y=mCPPonse
           legend.title = element_text(size=20),
           legend.position="none",
           panel.background = element_blank())+
-    scale_x_discrete(labels=c("D-", "D+"))+
-    scale_color_discrete((name="Disractor"),labels=c("D-", "D+"))+
-    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+"))+
+    scale_x_discrete(labels=c("Absent", "Present"))+
+    scale_color_discrete((name="Disractor"),labels=c("Absent", "Present"))+
+    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))+
+    scale_fill_manual(values=colorsUsed,name="Distractor") +   
    expand_limits(x = 2, y = 0)+
- scale_y_continuous(expand = c(0, 0))
+ scale_y_continuous(expand = c(0, 0))+  coord_cartesian(ylim=c(200,360))
 plotCPPonset
 dev.off()
 plotCPPonset
@@ -816,10 +823,11 @@ ANOVA_dataPlotCPPlevel<-plevelAll%>% group_by(ID,distractor) %>%
                     select(ID,distractor,meanCPPlevel)%>% na.omit()%>%
                     summarize(mCPPlevel = mean(meanCPPlevel, na.rm=TRUE)) 
 ANOVA_data_summaryCPPlevel<-ANOVA_dataPlotCPPlevel%>% group_by(distractor) %>% 
-                    summarize(stdCPPlevel=sd(mCPPlevel, na.rm=TRUE),mCPPlevel = mean(mCPPlevel, na.rm=TRUE) )
+                    summarize(stdCPPlevel=se(mCPPlevel),mCPPlevel = mean(mCPPlevel, na.rm=TRUE) )
 
-plotCPPlevel <- ANOVA_dataPlotCPPlevel %>% ggplot()+aes(x=distractor, y=mCPPlevel,color=distractor) +
-  geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
+plotCPPlevel <- ANOVA_data_summaryCPPlevel %>% ggplot()+aes(x=distractor, y=mCPPlevel,color=distractor,fill=distractor) +
+  #geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
+      geom_col(width=0.5,alpha=0.3)+
   geom_pointrange(aes(ymin=mCPPlevel-stdCPPlevel,ymax=mCPPlevel+stdCPPlevel),position = position_dodge(0.9),data=ANOVA_data_summaryCPPlevel)+  
      xlab("Distractor") + ylab(expression(atop("Response-locked",paste("CPP Amplitude (", mu, "V )")))) +
     theme(axis.title.x = element_text(face="bold", size=20),
@@ -830,11 +838,12 @@ plotCPPlevel <- ANOVA_dataPlotCPPlevel %>% ggplot()+aes(x=distractor, y=mCPPleve
           legend.title = element_text(size=20),
           legend.position="none",
             panel.background = element_blank())+
-    scale_x_discrete(labels=c("D-", "D+"))+
-    scale_color_discrete((name="Distractor"), labels=c("D-","D+"))+
-    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+"))+
+    scale_x_discrete(labels=c("Absent", "Present"))+
+    scale_color_discrete((name="Distractor"), labels=c("Absent","Present"))+
+    scale_color_manual(values=colorsUsed,name="Distractor")+
+    scale_fill_manual(values=colorsUsed,name="Distractor")  +
    expand_limits(x = 1, y = 0)+
- scale_y_continuous(expand = c(0, 0))
+ scale_y_continuous(expand = c(0, 0))+  coord_cartesian(ylim=c(15,36))
 plotCPPlevel
 dev.off()
 plotCPPlevel
@@ -861,10 +870,11 @@ ANOVA_dataPlotbeta<-plevelAll%>% group_by(ID,distractor) %>%
                     select(ID,distractor,meanBetarSlope)%>% na.omit()%>%
                     summarize(mBetaSlope = mean(-meanBetarSlope, na.rm=TRUE)) 
 ANOVA_data_summarybeta<-ANOVA_dataPlotbeta%>% group_by(distractor) %>% 
-                    summarize(stdBetaSlope=sd(mBetaSlope, na.rm=TRUE),mBetaSlope = mean(mBetaSlope, na.rm=TRUE) )
+                    summarize(stdBetaSlope=se(mBetaSlope),mBetaSlope = mean(mBetaSlope, na.rm=TRUE) )
 
-plotBetaSlope <- ANOVA_dataPlotbeta %>% ggplot()+aes(x=distractor, y=mBetaSlope,color=distractor) +
-  geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
+plotBetaSlope <- ANOVA_data_summarybeta %>% ggplot()+aes(x=distractor, y=mBetaSlope,color=distractor,fill=distractor) +
+        geom_col(width=0.5,alpha=0.3)+
+ # geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
   geom_pointrange(aes(ymin=mBetaSlope-stdBetaSlope,ymax=mBetaSlope+stdBetaSlope),position = position_dodge(0.9),data=ANOVA_data_summarybeta)+  
      xlab("Distractor") + ylab(expression(paste("Beta Slope (", mu, "/ms)"))) +
     theme(axis.title.x = element_text(face="bold", size=20),
@@ -875,11 +885,12 @@ plotBetaSlope <- ANOVA_dataPlotbeta %>% ggplot()+aes(x=distractor, y=mBetaSlope,
           legend.position="none",
           legend.title = element_text(size=20),
           panel.background = element_blank())+
-    scale_x_discrete(labels=c("D-", "D+"))+
-    scale_color_discrete((name="Distractor"),labels=c("D-", "D+"))+
-    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+"))+
+    scale_x_discrete(labels=c("Absent", "Present"))+
+    scale_color_discrete((name="Distractor"),labels=c("Absent", "Present"))+
+    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))+
         geom_hline(yintercept=0,, color = "black", size=0.5, alpha=0.5)+
-  ylim(-0.0025,0.0015)
+   scale_fill_manual(values=colorsUsed,name="Distractor")  +
+  ylim(-0.001,0.00)
 plotBetaSlope
 dev.off()
 plotBetaSlope
@@ -900,10 +911,11 @@ ANOVA_dataPlotbetaLevel<-plevelAll%>% group_by(ID,distractor) %>%
                     select(ID,distractor,meanBetaLevel)%>% na.omit()%>%
                     summarize(mBetaLevel = mean(-meanBetaLevel, na.rm=TRUE)) 
 ANOVA_data_summarybetalevel<-ANOVA_dataPlotbetaLevel%>% group_by(distractor) %>% 
-                    summarize(stdBetaLevel=sd(mBetaLevel, na.rm=TRUE),mBetaLevel = mean(mBetaLevel, na.rm=TRUE) )
+                    summarize(stdBetaLevel=se(mBetaLevel),mBetaLevel = mean(mBetaLevel, na.rm=TRUE) )
 
-plotBetaLevel <- ANOVA_dataPlotbetaLevel %>% ggplot()+aes(x=distractor, y=mBetaLevel,color=distractor) +
-  geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),alpha=0.5)+  
+plotBetaLevel <- ANOVA_data_summarybetalevel %>% ggplot()+aes(x=distractor, y=mBetaLevel,color=distractor,fill=distractor) +
+  #geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),alpha=0.5)+  
+  geom_col(width=0.5,alpha=0.3)+
   geom_pointrange(aes(ymin=mBetaLevel-stdBetaLevel,ymax=mBetaLevel+stdBetaLevel),position = position_dodge(0.9),data=ANOVA_data_summarybetalevel)+  
      xlab("Distractor") + ylab(expression(paste("Beta Amplitude (", mu, "V)"))) +
     theme(axis.title.x = element_text(face="bold", size=20),
@@ -914,11 +926,12 @@ plotBetaLevel <- ANOVA_dataPlotbetaLevel %>% ggplot()+aes(x=distractor, y=mBetaL
           legend.position="none",
           legend.title = element_text(size=20),
           panel.background = element_blank())+
-    scale_x_discrete(labels=c("D-", "D+"))+
-    scale_color_discrete((name="Distractor"),labels=c("D-", "D+"))+
-    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+"))+
+    scale_x_discrete(labels=c("Absent", "Present"))+
+    scale_color_discrete((name="Distractor"),labels=c("Absent", "Present"))+
+    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))+
         geom_hline(yintercept=0,, color = "black", size=0.5, alpha=0.5)+
-  ylim(-1.5,0.5)
+   scale_fill_manual(values=colorsUsed,name="Distractor")  +
+  ylim(-0.8,0)
 plotBetaLevel
 dev.off()
 plotBetaLevel
@@ -944,7 +957,7 @@ ANOVA_dataAlpha<-plevelAll%>% group_by(ID,distractor) %>%
                     select(ID,distractor,meanAlphaPower)%>% na.omit()%>%
                     summarize(mAlphaPower = mean(meanAlphaPower, na.rm=TRUE)) 
 ANOVA_data_summaryAlphalevel<-ANOVA_dataAlpha%>% group_by(distractor) %>% 
-                    summarize(stdAlphaPower=sd(mAlphaPower, na.rm=TRUE),mAlphaPower = mean(mAlphaPower, na.rm=TRUE) )
+                    summarize(stdAlphaPower=se(mAlphaPower),mAlphaPower = mean(mAlphaPower, na.rm=TRUE) )
 
 plotAlphaPower <- ANOVA_dataAlpha %>% ggplot()+aes(x=distractor, y=mAlphaPower,color=distractor) +
   geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
@@ -958,9 +971,9 @@ plotAlphaPower <- ANOVA_dataAlpha %>% ggplot()+aes(x=distractor, y=mAlphaPower,c
           legend.position="none",
           legend.title = element_text(size=20),
           panel.background = element_blank())+
-    scale_x_discrete(labels=c("D-", "D+"))+
-    scale_color_discrete((name="Distractor"),labels=c("D-", "D+"))+
-    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("D-", "D+"))
+    scale_x_discrete(labels=c("Absent", "Present"))+
+    scale_color_discrete((name="Distractor"),labels=c("Absent", "Present"))+
+    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))
 plotAlphaPower
 dev.off()
 plotAlphaPower

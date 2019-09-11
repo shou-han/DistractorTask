@@ -1,7 +1,7 @@
 % save all the plots in a group and the plot can choose whichever one it wants
 % participant 9, choose a different set of electrodes
-%function analysis_script(single_participants)
-single_participants=3;
+function analysis_script(single_participants)
+%single_participants=3;
 disp('start')
 oldnew = {'', 'old'};
 old=1 ;
