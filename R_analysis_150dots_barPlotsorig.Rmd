@@ -4,16 +4,8 @@ author: "Shou-Han Zhou"
 date: "7 August 2019"
 output: html_document
 ---
-```{r setup, include=FALSE, echo=FALSE}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-  colorsUsed=c(rgb(1,0,0),rgb(0,0,1));
-  #Set decimal points and disable scientific notation
-options(digits=3, scipen=999) 
-source("functions/AnalysisFunctions.R")
-source("functions/preloadDataDistractor.R")
-source("functions/statsAnalysisDistractor.R")
-source("functions/plotfigure.R")
-preloadPackages()
 # Make sure to keep the default for normal processing.
 #default_output_hook <- knitr::knit_hooks$get("output")
 # 
@@ -42,6 +34,220 @@ preloadPackages()
 # })
 # 
 # knitr::opts_template$set("kill_prefix"=list(comment=NA, null_prefix=TRUE))
+```
+
+```{r libraries, echo=FALSE,include=FALSE}
+if(!require(psych)){install.packages("psych")}
+if(!require(nlme)){install.packages("nlme")}
+if(!require(car)){install.packages("car")}
+if(!require(multcompView)){install.packages("multcompView")}
+if(!require(lsmeans)){install.packages("lsmeans")}
+if(!require(ggplot2)){install.packages("ggplot2")}
+if(!require(rcompanion)){install.packages("rcompanion")}
+if(!require(nlme)){install.packages("nlme")}
+if(!require(lmerTest)){install.packages("lmerTest")}
+if(!require(mediation)){install.packages("mediation")}
+if(!require(R.matlab)){install.packages("R.matlab")}
+if(!require(TukeyC)){install.packages("TukeyC")}
+if(!require(ggpubr)){install.packages("ggpubr")}
+### Install/load required packages
+#List of R packages required for this analysis:
+required_packages <- c("psych", "ggplot2", "tidyr", "stringr", "lubridate", "readxl","knitr",
+                       "readr", "rmarkdown", "png", "lme4", "ez", "dplyr","ggpubr")
+#Install required_packages:
+new.packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+#Load required_packages:
+lapply(required_packages, require, character.only = TRUE)
+
+
+#Set decimal points and disable scientific notation
+options(digits=3, scipen=999) 
+
+genData<-function(dataRaw){
+  indx = which(!is.na(dataRaw[1,]))
+  a<-dataRaw[1,!is.na(dataRaw[1,])]
+  #omit the first row
+  dataRaw = dataRaw[-1,]
+ dataRaw[,ncol(dataRaw)]<-NULL
+  dataProc=matrix(nrow=dim(dataRaw)[1],ncol=dim(dataRaw)[2])
+  for (l in 1:ncol(a)){
+    dataProc[,l]<-as.numeric(dataRaw[,l])
+  }
+ dataAll=data.frame((dataProc),stringsAsFactors=FALSE);
+#  dataAll=dataRaw
+#   b<-t(rep(a,each=4))
+#  names(dataAll)<-b
+#  names(dataAll)<-make.unique(names(dataAll))
+  names(dataAll)<-a
+  return(dataAll)
+}
+
+nopermANOVA<-function(dataInterest,interestValue){
+    # the rest
+  distdata<- dataInterest %>% group_by(ID,distractor)%>%
+      select(ID, distractor, interestValue) %>%
+      na.omit() %>%
+      gather(key_all, dv, -ID,  -distractor)
+  distMean<- tapply(distdata$dv, distdata$distractor,mean)
+  # the binsdata
+  bindata<- dataInterest %>% group_by(ID,distractor)%>%
+      select(ID, distractor, interestValue) %>%
+      na.omit() %>%
+      gather(key_all, dv, -ID, -distractor)
+
+  #datapleveldist,dataplevelbin,dataplevelrest,
+  # the rest
+  # resdata<- dataInterest %>% group_by(ID,distractor,bins,hand,Hemi)%>%
+  #    select(ID, distractor, interestValue, hand,Hemi, bins) %>%
+  #     na.omit() %>%
+  #     gather(key_all, dv, -ID, -Hemi, -distractor, -bins,-hand)
+  distractData <- ezANOVA(data = distdata
+                          , dv = .(dv)
+                          , wid = .(ID)
+                          , within = .(distractor)
+                          , within_full = .(distractor)
+                          , within_covariates = NULL
+                          , between = NULL
+                          , between_covariates = NULL
+                          , observed = NULL
+                          , type = 3)
+  statData <- ezStats(data = distdata
+                          , dv = .(dv)
+                          , wid = .(ID)
+                          , within = .(distractor)
+                          , within_full = .(distractor)
+                          , within_covariates = NULL
+                          , between = NULL
+                          , between_covariates = NULL
+                          , type = 3)  
+  # allstatData  <- ezANOVA(data = resdata
+  #                         , dv = .(dv)
+  #                         , wid = .(ID)
+  #                         , within = .(Hemi,distractor,bins,hand)
+  #                         , within_covariates = NULL
+  #                         , between = NULL
+  #                         , between_covariates = NULL
+  #                         , observed = NULL
+  #                         , type = 3)
+#  binMean <- tapply(distdata$dv, list(bindata$distractor, bindata$bins),mean)
+#  binData<- ezANOVA(data = bindata
+#                          , dv = .(dv)
+#                          , wid = .(ID)
+#                          , within = .(distractor,bins)
+#                          , within_full = .(distractor,bins)
+#                          , within_covariates = NULL
+#                          , between = NULL
+#                          , between_covariates = NULL
+#                          , observed = NULL
+#                          , type = 3)
+  return(list(distMean,distractData,statData))#,allstatData))
+}
+
+permANOVA<-function(dataInterest,interestValue,permNo){
+        # the rest
+    distdata<- dataInterest %>% group_by(ID,distractor)%>%
+        select(ID, distractor, interestValue) %>%
+        na.omit() %>%
+        gather(key_all, dv, -ID,  -distractor)
+    # the binsdata
+    bindata<- dataInterest %>% group_by(ID,distractor)%>%
+        select(ID, distractor, interestValue) %>%
+        na.omit() %>%
+        gather(key_all, dv, -ID, -distractor)
+    #datapleveldist,dataplevelbin,dataplevelrest,
+    # the rest
+    # resdata<- dataInterest %>% group_by(ID,distractor,bins,hand,Hemi)%>%
+    #     select(ID, distractor, interestValue, hand,Hemi, bins) %>%
+    #     na.omit() %>%
+    #     gather(key_all, dv, -ID, -Hemi, -distractor, -bins,-hand)
+    #  log <- capture.output({distractData <- ezPerm(data = distdata
+    #                         , dv = .(dv)
+    #                         , wid = .(ID)
+    #                         , within = .(distractor)
+    #                         , perms = permNo)});
+    #  print('distractDone')
+    #  log<- capture.output({  binData <- ezPerm(data = bindata
+    #                           , dv = .(dv)
+    #                           , wid = .(ID)
+    #                           , within = .(distractor,bins)
+    #                           , perms = permNo)});
+    # print('binDone')
+    #  log <- capture.output({  allstatData <- ezPerm(data = resdata
+    #                           , dv = .(dv)
+    #                           , wid = .(ID)
+    #                           , within = .(Hemi,distractor,bins, hand)
+    #                           , perms = permNo)});
+    # print('alldone')
+    return()#list(distractData,binData))#,allstatData))
+}
+
+nopermANOVAO<-function(dataInterest,interestValue){
+    # the rest
+  distdata<- dataInterest %>% group_by(ID,distractor)%>%
+      select(ID, distractor, interestValue) %>%
+      na.omit() %>%
+      gather(key_all, dv, -ID,  -distractor)
+  # the binsdata
+  bindata<- dataInterest %>% group_by(ID,distractor)%>%
+      select(ID, distractor, interestValue) %>%
+      na.omit() %>%
+      gather(key_all, dv, -ID, -distractor)
+  distractData <- ezANOVA(data = distdata
+                          , dv = .(dv)
+                          , wid = .(ID)
+                          , within = .(distractor)
+                          , within_covariates = NULL
+                          , between = NULL
+                          , between_covariates = NULL
+                          , observed = NULL
+                          , type = 3)
+  binData<- ezANOVA(data = bindata
+                          , dv = .(dv)
+                          , wid = .(ID)
+                          , within = .(distractor)
+                          , within_covariates = NULL
+                          , between = NULL
+                          , between_covariates = NULL
+                          , observed = NULL
+                          , type = 3)
+  return(list(distractData,binData))
+}
+
+plotN2figure<-function(datapoints,interestValue,xlabelT, ylabelT,ylimits){
+ dataPlot<-datapoints%>% group_by(ID,distractor) %>% 
+                    select(ID,distractor,interestValue)%>% na.omit()%>%
+                  gather(key_all, dv, -ID,  -distractor)%>%
+                    summarize(minInt = mean(-dv, na.rm=TRUE)) 
+  summaryPlot<-dataPlot%>% group_by(distractor) %>% 
+                    summarize(stdInt=se(minInt),minInt = mean(minInt, na.rm=TRUE) )
+  
+  plotInt <- summaryPlot %>% ggplot()+aes(x=distractor, y=minInt,color=distractor,fill=distractor) +
+  #geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.3)+  
+  geom_pointrange(aes(ymin=minInt-stdInt,ymax=minInt+stdInt),position = position_dodge(0.9),data=summaryPlot)+
+      geom_col(width=0.5,alpha=0.3)+
+  #  geom_boxplot( width=0.15,fatten=NULL)+
+     xlab(xlabelT) + ylab(ylabelT)+
+    theme(axis.title.x = element_text(face="bold", size=20),
+          axis.text.x  = element_text(face="bold", angle=0,  size=18),
+          axis.title.y = element_text(face="bold", size=20),
+          axis.text.y  = element_text(face="bold", angle=0, size=18),
+          legend.text  =element_text(size=18),
+          legend.title = element_text(size=20),
+          legend.position="none",
+          panel.background = element_blank())+
+    scale_x_discrete(labels=c("Absent", "Present"))+
+    scale_color_discrete((name=xlabelT), labels=c("Absent","Present"))+
+      coord_cartesian(ylim=ylimits)+
+     geom_hline(yintercept=0, color = "black", size=0.5,alpha=0.5)+
+  scale_fill_manual(values=colorsUsed,name=xlabelT)  +
+    scale_color_manual(values=colorsUsed,name=xlabelT)
+   # stat_compare_means(data=dataPlot, paired=TRUE, method="t.test",comparisons=list(c("DA","DP")),label="p.signif")
+  return(list(plotInt))
+}
+# a function for calculating standard error 
+se=function(x) sqrt(var(x, na.rm=TRUE)/length(x[!is.na(x)])) 
+colorsUsed=c(rgb(1,0,0),rgb(0,0,1));
 ```
 
 ```{r inputdata, echo=FALSE,include=FALSE}
@@ -90,45 +296,41 @@ plevelALLCHH <- plevelAll %>%
                 select("ID","distractor",contains("mean"))
 # test for normality
 options(scipen=99)
-Normality_tests(plevelALLCHH)
+Normality_tests <-plevelALLCHH %>%ungroup()%>%
+  select("ID","distractor",contains("mean"))%>%
+                    gather(key, value,-ID,-distractor) %>%
+                    group_by(key)%>%
+ do(ShapiroWilk_p_value= shapiro.test(.$value)[2],
+                       Anderson_Darling_p_value = nortest::ad.test(.$value)[2], 
+                       CramerVonMises_p_value = nortest::cvm.test(.$value)[2],
+                       Shapiro_Francia_p_value = nortest::sf.test(.$value)[2],
+                       Kolmogorov_Smirnov_p_value= nortest::lillie.test(.$value)[2]) %>% 
+                    mutate(ShapiroWilk_p_value= unlist(ShapiroWilk_p_value),
+                       Anderson_Darling_p_value = unlist(Anderson_Darling_p_value), 
+                       CramerVonMises_p_value = unlist(CramerVonMises_p_value),
+                       Shapiro_Francia_p_value = unlist(Shapiro_Francia_p_value),
+                       Kolmogorov_Smirnov_p_value = unlist(Kolmogorov_Smirnov_p_value)) %>% 
+                    mutate(average_p_value=(ShapiroWilk_p_value + 
+                                                Anderson_Darling_p_value + 
+                                                CramerVonMises_p_value + 
+                                                Shapiro_Francia_p_value + 
+                                                Kolmogorov_Smirnov_p_value)/5) %>% arrange(average_p_value)
+kable(Normality_tests,
+    format.args = list(big.mark = ","), digits=4,
+  
+      caption="Normality tests")
 ```
 ## Behaviour: Response Time
-```{r RT data processing, echo=FALSE, warning=FALSE, comment=''}
+```{r RT stats, echo=FALSE, warning=FALSE, comment=''}
 data<-dataA %>% #make factors
   mutate(side= ifelse(side==1,"Left","Right"),
          hand = ifelse(hand==1,"left","right"),
-         hit = ifelse(is.na(hit),"miss", ifelse(hit==1,"hit","wrong")))%>% #rename
+         hit = ifelse(is.na(hit),"miss", ifelse(hit==1,"hit","wrongbutton")))%>% #rename
   rename(., ID=subjectAll, Accuracy = hit, Hemi=side, distractor="c") %>%
   mutate_each_(funs(factor),c("distractor","Hemi","iti","ID","hand")) #make factor
 levels(data$distractor)<-list("DA"="1","DP"="2")
 data$RT=data$RT*2
-data<-filter(data, RT<1500, RT>150)
-
-data$log_RT<-(data$RT) #log
-#####Z-score each participant's log_RT data ####
-data$IDbyITIbyHemifield<-interaction(data$ID, data$iti, data$hand)
-#calculate mean and sd 
-m <- tapply(data$log_RT,data$IDbyITIbyHemifield,mean, na.rm = T)
-s <- tapply(data$log_RT,data$IDbyITIbyHemifield,sd, na.rm = T)
-#calculate log_RT.Z and save it inside data.frame
-data$log_RT.Z <- as.numeric((data$log_RT-m[data$IDbyITIbyHemifield])/s[data$IDbyITIbyHemifield])
-#Remove trials where absolute log_RT.Z>3 (i.e. remove outlier RTs)
-data<-data[!abs(data$log_RT.Z)>3,]
-```
-```{r Response Time Graph, out.width='50%', fig.show='hold', echo=FALSE}
-knitr::include_graphics((rep('../analysisScript/Figures/RT_bar_graphs10dots.png')))
-```
-```{r RT stats, echo=FALSE, warning=FALSE, comment=''}
-data<-dataA %>% #make factors
-  mutate(side= ifelse(side==1,"Left","Right"),
-         c= ifelse(c==2,"dist","nodist"),
-         hand = ifelse(hand==1,"left","right"),
-         hit = ifelse(is.na(hit),"miss", ifelse(hit==1,"hit","wrongbutton")))%>% #rename
-  rename(., ID=subjectAll, Accuracy = hit, Hemi=side) %>%
-  mutate_each_(funs(factor),c("c","Hemi","iti","ID","hand")) #make factor
-data$RT=data$RT*2
-data<-filter(data, RT<1500, RT>150)
-
+data<-data%>% filter(Accuracy!="miss")
 data$log_RT<-(data$RT) #log
 #####Z-score each participant's log_RT data ####
 data$IDbyITIbyHemifield<-interaction(data$ID, data$iti, data$hand)
@@ -140,15 +342,13 @@ data$log_RT.Z <- as.numeric((data$log_RT-m[data$IDbyITIbyHemifield])/s[data$IDby
 #Remove trials where absolute log_RT.Z>3 (i.e. remove outlier RTs)
 data<-data[!abs(data$log_RT.Z)>3,]
 #######################RT##################################
-Speed_checker <- data %>% group_by(ID,c,Hemi,hand) %>%
+Speed_checker <- data %>%group_by(ID,distractor,Hemi,hand) %>%
                     summarise(meanRTZ  = mean(RT , na.rm=TRUE))
-speedmean<- tapply(Speed_checker$meanRTZ, Speed_checker$c,mean)
 
-print(list(speedmean))
 anovaRT <- ezANOVA(data = Speed_checker
                         , dv = .(meanRTZ)
                         , wid = .(ID)
-                        , within = .(c,Hemi)
+                        , within = .(distractor,Hemi)
                         , within_covariates = NULL
                         , between = NULL
                         , between_covariates = NULL
@@ -156,59 +356,25 @@ anovaRT <- ezANOVA(data = Speed_checker
                         , type = 3)
 print("Repeated Measures ANOVA  for the effect of distractor on RT:")
 print(anovaRT);
+
+statRT <- ezStats(data = Speed_checker
+                        , dv = .(meanRTZ)
+                        , wid = .(ID)
+                        , within = .(distractor,Hemi)
+                        , within_covariates = NULL
+                        , between = NULL
+                        , between_covariates = NULL
+                        , type = 3)
+print("Repeated Measures Statistics  for the effect of distractor on RT:")
+print(statRT);
 ```
-```{r RT stats}
-#######################RT##################################
-getStats(data=data,
-         ID=ID,
-         distractor=distractor,
-         Hemi=Hemi,
-         test_var=RT
-)
-#plotfigureHit
-Speed_checker_part <- data %>% group_by(ID,distractor,Accuracy) %>% summarise(meanRT  = mean(RT , na.rm=TRUE))
-Speed_checker_partHit<-Speed_checker_part%>% filter(Accuracy=="hit")
-```
-```{r test}
-source("functions/plotfigure.R")
-testData<-plotfigurebar(data=data,
-         yvar=RT,
-         xvar=distractor,
-         groupvar=Accuracy,
-         xlabelT="Distractor",
-         ylabelT="RT, (ms)",
-         legendlabel=c("Absent", "Present"),
-         ylims = c(800,1000),
-         colorsUsed=colorsUsed,
-         filtervar="hit",
-         filename=file.path(figpaths,"BehaviourRTHit.png")
-)
-
-#### Plot of wrong button
-perfectSubj = c(1,6 ,7 ,15,13, 17, 18, 20)
-data<-data%>%filter(!(ID %in% perfectSubj))
-
-testData2<-plotfigurebar(data=data,
-         yvar=RT,
-         xvar=distractor,
-         groupvar=Accuracy,
-         xlabelT="Distractor",
-         ylabelT="RT, (ms)",
-         legendlabel=c("Absent", "Present"),
-         ylims = c(900,1100),
-         colorsUsed=colorsUsed,
-         filtervar="wrong",
-         filename=file.path(figpaths,"BehaviourRTHit.png")
-)
-```
-
-```{r Response Time Graph , out.width='50%', fig.show='hold', echo=FALSE}
-
-
-savefile<-file.path(figpaths,"BehaviourRTWrong.png")
+```{r Response Time Graph, out.width='50%', fig.show='hold', echo=FALSE}
+#knitr::include_graphics((rep('../analysisScript/Figures/RT_bar_graphs150dots.png')))
+savefile<-file.path(figpaths,"BehaviourRT.png")
 png(savefile,width=400,heigh=350, units="px")
-
-plotbehaviourWrong <- Speed_checker_summary %>% filter(Accuracy=="wrong") %>% ggplot()+aes(x=distractor, y=meanRT, color=distractor,fill=distractor) +
+Speed_checker_part <- data %>% group_by(ID,distractor) %>% summarise(meanRT  = mean(RT , na.rm=TRUE))
+Speed_checker_summary<- Speed_checker_part %>% group_by(distractor) %>% summarise(seRT = se(meanRT), meanRT  = mean(meanRT , na.rm=TRUE))
+plotbehaviour <- Speed_checker_summary %>% ggplot()+aes(x=distractor, y=meanRT, color=distractor,fill=distractor) +
      # geom_violin(trim=FALSE, position=position_dodge((0.9))) +
   geom_col(width=0.5,alpha=0.3)+
   #  geom_boxplot( width=0.15,fatten=NULL)+
@@ -217,22 +383,21 @@ plotbehaviourWrong <- Speed_checker_summary %>% filter(Accuracy=="wrong") %>% gg
     theme(axis.title.x = element_text(face="bold", size=20),
           axis.text.x  = element_text(face="bold", angle=0,  size=18),
           axis.title.y = element_text(face="bold", size=20),
-          axis.text.y  = element_text(face="plain", angle=0, size=18),
+          axis.text.y  = element_text(face="bold", angle=0, size=18),
           legend.text  =element_text(size=18),
           legend.title = element_text(size=20),
           legend.position="none",
           panel.background = element_blank())+
     scale_x_discrete(labels=c("Absent", "Present"))+
   scale_color_discrete((name="Distractor"),labels=c("Absent", "Present"))+
-  coord_cartesian(ylim=c(900,1100))+   
+  coord_cartesian(ylim=c(800,1100))+   
   scale_fill_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))  +
-  scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))
-#+
- # stat_compare_means(data=Speed_checker_partWrong, paired=TRUE, method="t.test",comparisons=list(c("DA","DP")),label="p.signif",label.y = 1100)
+  scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))+
+  stat_compare_means(data=Speed_checker_part, paired=TRUE, method="t.test",comparisons=list(c("DA","DP")),label="p.signif",label.y = 1050)
 
-plotbehaviourWrong
+plotbehaviour
 dev.off()
-plotbehaviourWrong 
+plotbehaviour 
 
 ```
 
@@ -325,7 +490,7 @@ plotbehaviourHit
 dev.off()
 plotbehaviourHit  
 ```
-# From Collaborator Comment: missing trials analysis
+
 ```{r missing trials}
 data<-dataA %>% #make factors
   mutate(side= ifelse(side==1,"Left","Right"),
@@ -404,6 +569,7 @@ plotbehaviourWrongMiss
 dev.off()
 plotbehaviourWrongMiss 
 ```
+
 ## N2
 ```{r N2pc Graph, out.width='50%', fig.show='hold', fig.align = 'default', echo=FALSE}
 knitr::include_graphics((rep('../analysisScript/Figures/N2pcxdist150dots.png')))
@@ -443,7 +609,7 @@ print(N2iLatencyNoperm)
 ```{r N2pc graph, echo=FALSE, warning=FALSE, comment='', null_prefix=TRUE}
 savefile<-file.path(figpaths,"N2pc.png")
 png(savefile,width=400,heigh=350, units="px")
-plotN2pc<-plotN2figure(plevelAll,"meanN2pcpeak",  "Distractor", expression(bold(paste("N2pc Peak (" ,mu, "V)"))),c(-30,0))
+plotN2pc<-plotN2figure(plevelAll,"meanN2pcpeak",  "Distractor", expression(paste("N2pc Peak Amplitude (" ,mu, "V)")),c(-30,0))
 plotN2pc<-plotN2pc
 plotN2pc
 dev.off()
@@ -451,7 +617,7 @@ plotN2pc
 plevelAll2<-plevelAll%>%mutate(meanN2pcLatency=-meanN2pcLatency)
 savefile<-file.path(figpaths,"N2pcL.png")
 png(savefile,width=400,heigh=350, units="px")
-plotN2pcL<-plotN2figure(plevelAll2,"meanN2pcLatency",  "Distractor", expression(bold(paste("N2pc Peak Latency (ms)"))),c(250, 400))
+plotN2pcL<-plotN2figure(plevelAll2,"meanN2pcLatency",  "Distractor", expression(paste("N2pc Peak Latency (ms)")),c(250, 400))
 plotN2pcL
 dev.off()
 plotN2pcL
@@ -500,24 +666,53 @@ pairs(emmeans(aov_contradist,~contradist),adjust="bonferroni")
 # violin graphs 
 savefile<-file.path(figpaths,"N2c.png")
 png(savefile,width=400,heigh=350, units="px")
-plotN2c<-plotN2figure(plevelAll,"meanN2cpeak","Distractor", expression(bold(paste("N2c Peak Amplitude (" ,mu, "V)"))),c(-25,5))
+plotN2c<-plotN2figure(plevelAll,"meanN2cpeak","Distractor", expression(paste("N2c Peak Amplitude (" ,mu, "V)")),c(-25,5))
 plotN2c<-plotN2c
 plotN2c
 dev.off()
 plotN2c
 savefile<-file.path(figpaths,"N2i.png")
 png(savefile,width=400,heigh=350, units="px")
-plotN2i<-plotN2figure(plevelAll,"meanN2ipeak","Distractor", expression(bold(paste("N2i Peak Amplitude (" ,mu, "V)"))),c(-25, 5))
-plotN2i
-dev.off()
-plotN2i
-savefile<-file.path(figpaths,"N2cvsN2i.png")
-png(savefile,width=400,heigh=350, units="px")
-plotN2cN2i<-plotN2figure(plevelAll,"meanN2ipeak","Distractor", expression(bold(paste("N2i Peak Amplitude (" ,mu, "V)"))),c(-25, 5))
+plotN2i<-plotN2figure(plevelAll,"meanN2ipeak","Distractor", expression(paste("N2i Peak Amplitude (" ,mu, "V)")),c(-25, 5))
 plotN2i
 dev.off()
 plotN2i
 
+```
+
+```{r N2 Peak Graph with contra and ipsi as factor, out.width='50%', fig.show='hold', echo=FALSE, include=FALSE}
+## plotting them
+# violin graphs 
+savefile<-file.path(figpaths,"n2cn2idist.png")
+png(savefile,width=400,heigh=350, units="px")
+ANOVA_dataPlot<-ANOVA_data%>% group_by(ID,distractor,contraipsi) %>% 
+                    summarize(meanN2 = mean(-dv, na.rm=TRUE)) 
+ANOVA_data_summary<-ANOVA_data%>% group_by(distractor,contraipsi) %>% 
+                    summarize(stdN2=se(dv),meanN2 = mean(-dv, na.rm=TRUE) )
+
+plotN2Ni <- ANOVA_dataPlot %>% ggplot()+aes(x=distractor, y=meanN2,color=contraipsi) +
+ #     geom_violin(trim = FALSE,  position = position_dodge(0.9))+
+  #geom_boxplot(width=0.15,position = position_dodge(0.9),fatten=NULL)+
+  geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=contraipsi, group=contraipsi),alpha=0.5)+
+  #  geom_boxplot( width=0.15,fatten=NULL)+
+  geom_pointrange(aes(ymin=meanN2-stdN2,ymax=meanN2+stdN2),position = position_dodge(0.9),data=ANOVA_data_summary)+
+#  geom_errorbar(aes(ymin=meanN2-stdN2,ymax=meanN2+stdN2), width=0.1,data=ANOVA_data_summary,position = position_dodge(0.9))+
+  geom_line(aes(x=distractor, y=meanN2,group=contraipsi),position = position_dodge(0.9),data=ANOVA_data_summary)+  
+    xlab("Distractor") + ylab(expression(paste("N2Peaks (" ,mu, "V)"))) +
+    theme(axis.title.x = element_text(face="bold", size=20),
+          axis.text.x  = element_text(face="bold", angle=0,  size=18),
+          axis.title.y = element_text(face="bold", size=20),
+          axis.text.y  = element_text(face="bold", angle=0, size=18),
+          legend.text  =element_text(size=18),
+          legend.title = element_text(size=20),
+          legend.position="none",
+            panel.background = element_blank())+
+    scale_x_discrete(labels=c("Absent", "Present"))+
+    scale_color_discrete((name="Waveform"))+
+    scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))
+plotN2Ni
+dev.off()
+plotN2Ni  
 ```
 
 
@@ -559,13 +754,13 @@ print(N2cN2iL_Stats);
 savefile<-file.path(figpaths,"N2cL.png")
 png(savefile,width=400,heigh=350, units="px")
 plevelAll2<-plevelAll%>%mutate(meanN2cLatency=-meanN2cLatency,meanN2iLatency=-meanN2iLatency)
-plotN2cL<-plotN2figure(plevelAll2,"meanN2cLatency","Distractor", expression(bold(paste("N2c Peak Latency (ms)"))),c(250, 350))
+plotN2cL<-plotN2figure(plevelAll2,"meanN2cLatency","Distractor", expression(paste("N2c Peak Latency (ms)")),c(250, 350))
 plotN2cL
 dev.off()
 plotN2cL
 savefile<-file.path(figpaths,"N2iL.png")
 png(savefile,width=400,heigh=350, units="px")
-plotN2iL<-plotN2figure(plevelAll2,"meanN2iLatency","Distractor", expression(bold(paste("N2i Peak Latency (ms)"))),c(250, 350))
+plotN2iL<-plotN2figure(plevelAll2,"meanN2iLatency","Distractor", expression(paste("N2i Peak Latency (ms)")),c(250, 350))
 plotN2iL
 dev.off()
 plotN2iL
@@ -637,11 +832,11 @@ plotCPP <- ANOVA_data_summaryCPP %>% ggplot()+aes(x=distractor, y=mCPP,color=dis
   geom_col(width=0.5, alpha=0.3)+
   #geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
   geom_pointrange(aes(ymin=mCPP-stdCPP,ymax=mCPP+stdCPP),position = position_dodge(0.9),data=ANOVA_data_summaryCPP)+  
-     xlab("Distractor") + ylab(expression(bold(paste("CPP slope (" ,mu, "V/ ms)"))))+
+     xlab("Distractor") + ylab(expression(paste("CPP slope (" ,mu, "V/ ms)")))+
     theme(axis.title.x = element_text(face="bold", size=20),
           axis.text.x  = element_text(face="bold", angle=0,  size=18),
           axis.title.y = element_text(face="bold", size=20),
-          axis.text.y  = element_text(face="plain", angle=0, size=18),
+          axis.text.y  = element_text(face="bold", angle=0, size=18),
           legend.text  =element_text(size=18),
           legend.title = element_text(size=20),
           legend.position="none",
@@ -682,11 +877,11 @@ plotCPPonset <- ANOVA_data_summaryCPPonset %>% ggplot()+aes(x=distractor, y=mCPP
   #geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
    geom_col(width=0.5, alpha=0.3)+
   geom_pointrange(aes(ymin=mCPPonset-stdCPPonset,ymax=mCPPonset+stdCPPonset),position = position_dodge(0.9),data=ANOVA_data_summaryCPPonset)+  
-     xlab("Distractor") + ylab(expression(bold("CPP Onset (ms)"))) +
+     xlab("Distractor") + ylab(expression("CPP Onset (ms)")) +
     theme(axis.title.x = element_text(face="bold", size=20),
           axis.text.x  = element_text(face="bold", angle=0,  size=18),
           axis.title.y = element_text(face="bold", size=20),
-          axis.text.y  = element_text(face="plain", angle=0, size=18),
+          axis.text.y  = element_text(face="bold", angle=0, size=18),
           legend.text  =element_text(size=18),
           legend.title = element_text(size=20),
           legend.position="none",
@@ -723,11 +918,11 @@ plotCPPlevel <- ANOVA_data_summaryCPPlevel %>% ggplot()+aes(x=distractor, y=mCPP
   #geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
       geom_col(width=0.5,alpha=0.3)+
   geom_pointrange(aes(ymin=mCPPlevel-stdCPPlevel,ymax=mCPPlevel+stdCPPlevel),position = position_dodge(0.9),data=ANOVA_data_summaryCPPlevel)+  
-     xlab("Distractor") + ylab(expression(bold(atop("Response-locked",paste("CPP Amplitude (", mu, "V )"))))) +
+     xlab("Distractor") + ylab(expression(atop("Response-locked",paste("CPP Amplitude (", mu, "V )")))) +
     theme(axis.title.x = element_text(face="bold", size=20),
           axis.text.x  = element_text(face="bold", angle=0,  size=18),
           axis.title.y = element_text(face="bold", size=20),
-          axis.text.y  = element_text(face="plain", angle=0, size=18),
+          axis.text.y  = element_text(face="bold", angle=0, size=18),
           legend.text  =element_text(size=18),
           legend.title = element_text(size=20),
           legend.position="none",
@@ -770,11 +965,11 @@ plotBetaSlope <- ANOVA_data_summarybeta %>% ggplot()+aes(x=distractor, y=mBetaSl
         geom_col(width=0.5,alpha=0.3)+
  # geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=distractor),alpha=0.5)+  
   geom_pointrange(aes(ymin=mBetaSlope-stdBetaSlope,ymax=mBetaSlope+stdBetaSlope),position = position_dodge(0.9),data=ANOVA_data_summarybeta)+  
-     xlab("Distractor") + ylab(expression(bold(paste("Beta Slope (", mu, "/ms)")))) +
+     xlab("Distractor") + ylab(expression(paste("Beta Slope (", mu, "/ms)"))) +
     theme(axis.title.x = element_text(face="bold", size=20),
           axis.text.x  = element_text(face="bold", angle=0,  size=18),
           axis.title.y = element_text(face="bold", size=20),
-          axis.text.y  = element_text(face="plain", angle=0, size=18),
+          axis.text.y  = element_text(face="bold", angle=0, size=18),
           legend.text  =element_text(size=18),
           legend.position="none",
           legend.title = element_text(size=20),
@@ -784,7 +979,7 @@ plotBetaSlope <- ANOVA_data_summarybeta %>% ggplot()+aes(x=distractor, y=mBetaSl
     scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))+
         geom_hline(yintercept=0,, color = "black", size=0.5, alpha=0.5)+
    scale_fill_manual(values=colorsUsed,name="Distractor")  +
-  ylim(-0.0005,0.00)
+  ylim(-0.001,0.00)
 plotBetaSlope
 dev.off()
 plotBetaSlope
@@ -811,11 +1006,11 @@ plotBetaLevel <- ANOVA_data_summarybetalevel %>% ggplot()+aes(x=distractor, y=mB
   #geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),alpha=0.5)+  
   geom_col(width=0.5,alpha=0.3)+
   geom_pointrange(aes(ymin=mBetaLevel-stdBetaLevel,ymax=mBetaLevel+stdBetaLevel),position = position_dodge(0.9),data=ANOVA_data_summarybetalevel)+  
-     xlab("Distractor") + ylab(expression(bold(paste("Beta Amplitude (", mu, "V)")))) +
+     xlab("Distractor") + ylab(expression(paste("Beta Amplitude (", mu, "V)"))) +
     theme(axis.title.x = element_text(face="bold", size=20),
           axis.text.x  = element_text(face="bold", angle=0,  size=18),
           axis.title.y = element_text(face="bold", size=20),
-          axis.text.y  = element_text(face="plain", angle=0, size=18),
+          axis.text.y  = element_text(face="bold", angle=0, size=18),
           legend.text  =element_text(size=18),
           legend.position="none",
           legend.title = element_text(size=20),
@@ -825,7 +1020,7 @@ plotBetaLevel <- ANOVA_data_summarybetalevel %>% ggplot()+aes(x=distractor, y=mB
     scale_color_manual(values=colorsUsed,name="Distractor", labels=c("Absent", "Present"))+
         geom_hline(yintercept=0,, color = "black", size=0.5, alpha=0.5)+
    scale_fill_manual(values=colorsUsed,name="Distractor")  +
-   coord_cartesian(ylim=c(-0.4, 0))
+  ylim(-0.8,0)
 plotBetaLevel
 dev.off()
 plotBetaLevel
@@ -939,84 +1134,4 @@ total := p11*p22*p33+p11*p32+p21*p33+p31
 mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLR")
 summary(mediation.res)
 ```
-
-
-## Distractor -> N2c peak amplitude -> CPP slope ->RT
-```{r CPPrslope and N2cpeak, echo=FALSE, warning=FALSE, comment=''}
-# follow Taylor et al 2008
-mediationModel<-'
-RT ~ p33*CPPrslope + p32*N2cpeak + p31*c 
-CPPrslope ~ p22*N2cpeak + p21*c 
-N2cpeak~p11*c
-mediation:=p11*p22*p33
-direct := p31
-total := p11*p22*p33+p11*p32+p21*p33+p31
-'
-mediation.res<-sem(mediationModel, data=dataERPG, estimator="MLR")
-summary(mediation.res)
-```
-
-
-# ```{r error analysis}
-# #############################
-# perfectSubj = c(1,6 ,7 ,15,13, 17, 18, 20)
-# SpeedcheckerError<- data %>% filter(!(ID %in% perfectSubj)) %>% group_by(ID,distractor,Accuracy)%>%
-#                     summarise(meanRTZ  = mean(RT , na.rm=TRUE))
-# anovaRTError <- ezANOVA(data = SpeedcheckerError
-#                         , dv = .(meanRTZ)
-#                         , wid = .(ID)
-#                         , within = .(distractor,Accuracy)
-#                         , within_covariates = NULL
-#                         , between = NULL
-#                         , between_covariates = NULL
-#                         , observed = NULL
-#                         , type = 3)
-# print("Repeated Measures ANOVA  for the effect of distractor on RT Error:")
-# print(anovaRTError);
-# 
-# statRTError <- ezStats(data = SpeedcheckerError
-#                         , dv = .(meanRTZ)
-#                         , wid = .(ID)
-#                         , within = .(distractor,Accuracy)
-#                         , within_covariates = NULL
-#                         , between = NULL
-#                         , between_covariates = NULL
-#                         , type = 3)
-# print("Repeated Measures Statistics  for the effect of distractor on RT Error:")
-# print(statRTError);
-# ```
-# ```{r N2 Peak Graph with contra and ipsi as factor, out.width='50%', fig.show='hold', echo=FALSE, include=FALSE}
-# ## plotting them
-# # violin graphs 
-# savefile<-file.path(figpaths,"n2cn2idist.png")
-# png(savefile,width=400,heigh=350, units="px")
-# ANOVA_dataPlot<-ANOVA_data%>% group_by(ID,distractor,contraipsi) %>% 
-#                     summarize(meanN2 = mean(-dv, na.rm=TRUE)) 
-# ANOVA_data_summary<-ANOVA_data%>% group_by(distractor,contraipsi) %>% 
-#                     summarize(stdN2=se(dv),meanN2 = mean(-dv, na.rm=TRUE) )
-# 
-# plotN2Ni <- ANOVA_dataPlot %>% ggplot()+aes(x=distractor, y=meanN2,color=contraipsi) +
-#  #     geom_violin(trim = FALSE,  position = position_dodge(0.9))+
-#   #geom_boxplot(width=0.15,position = position_dodge(0.9),fatten=NULL)+
-#   geom_jitter(position = position_jitterdodge(jitter.width=0.5,dodge.width=0.9),aes(color=contraipsi, group=contraipsi),alpha=0.5)+
-#   #  geom_boxplot( width=0.15,fatten=NULL)+
-#   geom_pointrange(aes(ymin=meanN2-stdN2,ymax=meanN2+stdN2),position = position_dodge(0.9),data=ANOVA_data_summary)+
-# #  geom_errorbar(aes(ymin=meanN2-stdN2,ymax=meanN2+stdN2), width=0.1,data=ANOVA_data_summary,position = position_dodge(0.9))+
-#   geom_line(aes(x=distractor, y=meanN2,group=contraipsi),position = position_dodge(0.9),data=ANOVA_data_summary)+  
-#     xlab("Distractor") + ylab(expression(paste("N2Peaks (" ,mu, "V)"))) +
-#     theme(axis.title.x = element_text(face="bold", size=20),
-#           axis.text.x  = element_text(face="bold", angle=0,  size=18),
-#           axis.title.y = element_text(face="bold", size=20),
-#           axis.text.y  = element_text(face="plain", angle=0, size=18),
-#           legend.text  =element_text(size=18),
-#           legend.title = element_text(size=20),
-#           legend.position="top",
-#             panel.background = element_blank())+
-#     scale_x_discrete(labels=c("Absent", "Present"))+
-#     scale_color_discrete((name="Waveform"))+
-#     scale_color_manual(values=colorsUsed,name="Distractor", labels=c("N2c", "N2i"))
-# plotN2Ni
-# dev.off()
-# plotN2Ni  
-# ```
 

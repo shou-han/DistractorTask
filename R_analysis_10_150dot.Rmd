@@ -54,7 +54,7 @@ if(!require(TukeyC)){install.packages("TukeyC")}
 ### Install/load required packages
 #List of R packages required for this analysis:
 required_packages <- c("psych", "ggplot2", "tidyr", "stringr", "lubridate", "readxl","knitr",
-                       "readr", "rmarkdown", "png", "lme4", "ez", "dplyr")
+                       "readr", "rmarkdown", "png", "lme4", "ez", "dplyr","eply")
 #Install required_packages:
 new.packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
@@ -259,7 +259,30 @@ kable(Normality_tests,
 knitr::include_graphics((rep('../analysisScript/Figures/RT_bar_graphs150dots.png')))
 ```
 ```{r Response Time}
-
+source("functions/statsAnalysisDistractor.R")
+#data<-preloadSpeedData(dataA=dataAAold)
+#######################RT##################################
+getExpStats(data=dataF,
+         ID=ID,
+         experiment=experiment,
+         distractor=distractor,
+         test_var=RT
+)
+source("functions/plotfigure.R")
+testData<-plotfigurebar(data=data,
+         yvar=RT,
+         xvar=distractor,
+         groupvar=Accuracy,
+         xlabelT="Distractor",
+         ylabelT="RT, (ms)",
+         legendlabel=c("Absent", "Present"),
+         ylims = c(800,1000),
+         colorsUsed=colorsUsed,
+         filtervar="hit",
+         filename=file.path(figpaths,"BehaviourRTHit.png")
+)
+```
+```{r test}
 meanRTNoperm<- nopermANOVA(plevelAll,'meanRT')
 print("Repeated Measures ANOVA  for the effect of distractor and experiment effect on Response Time:")
 print(meanRTNoperm)
@@ -284,6 +307,9 @@ plotSpeed <- SpeedAllID %>% ggplot()+aes(x=distractor, y=meanRTZ, color=experime
     scale_color_discrete((name="Experiment"))
 plotSpeed 
 dev.off()
+
+
+
 ```
 ```{r Accuracy}
 ## ACCURACY
